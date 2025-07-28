@@ -1,0 +1,90 @@
+// schemas/schema.gsql
+// This is the master schema for the Hybrid AI Council's knowledge graph.
+// It defines all the core vertices (nodes) and edges (relationships)
+// that constitute the AI's long-term memory.
+
+// --- VERTICES ---
+
+// Core Identity Vertices
+// A generic vertex for any person, including the user.
+CREATE VERTEX Person(PRIMARY_ID id STRING, name STRING, created_at DATETIME)
+
+// A specific vertex for the AI's own user-facing persona.
+CREATE VERTEX AIPersona(PRIMARY_ID id STRING, name STRING, version INT, created_at DATETIME)
+
+// A vertex to store preferences, which can be linked to a Person or AIPersona.
+// This allows for dynamic, data-driven personalities and user modeling.
+CREATE VERTEX Preference(PRIMARY_ID key STRING, value STRING, type STRING, confidence FLOAT, timestamp DATETIME)
+
+// Agent and Tool Vertices
+// A vertex representing an autonomous KIP (Knowledge-Incentive Protocol) agent.
+CREATE VERTEX KIPAgent(PRIMARY_ID id STRING, function STRING, status STRING, created_at DATETIME)
+
+// A vertex representing a tool or skill the AI can use.
+CREATE VERTEX Tool(PRIMARY_ID name STRING, description STRING, type STRING, version STRING)
+
+// Conversation and Memory Vertices
+// A vertex representing a conversation session with temporal context.
+CREATE VERTEX Conversation(PRIMARY_ID id STRING, timestamp DATETIME, context STRING, participants_count INT)
+
+// A vertex representing individual messages within conversations.
+CREATE VERTEX Message(PRIMARY_ID id STRING, content STRING, timestamp DATETIME, role STRING, token_count INT)
+
+// Knowledge and Decision Vertices
+// A vertex for storing learned knowledge with confidence scoring.
+CREATE VERTEX Knowledge(PRIMARY_ID id STRING, content STRING, confidence FLOAT, source STRING, timestamp DATETIME, category STRING)
+
+// A vertex for storing decisions made by the council with reasoning traces.
+CREATE VERTEX Decision(PRIMARY_ID id STRING, question STRING, outcome STRING, reasoning STRING, confidence FLOAT, timestamp DATETIME)
+
+// Pheromind Vertices
+// A vertex for storing pheromone traces (12-second TTL ambient processing).
+CREATE VERTEX Pheromone(PRIMARY_ID id STRING, pattern STRING, strength FLOAT, ttl DATETIME, source_agent STRING)
+
+
+// --- EDGES ---
+
+// Core Identity Relationships
+// Connects a Person or AIPersona to their preferences.
+CREATE UNDIRECTED EDGE HAS_PREFERENCE(FROM Person|AIPersona, TO Preference, strength FLOAT)
+
+// Agent and Tool Relationships
+// Connects a KIPAgent to the tools it is authorized to use.
+CREATE UNDIRECTED EDGE CAN_USE(FROM KIPAgent, TO Tool, authorization_level STRING, granted_at DATETIME)
+
+// Conversation Flow Relationships
+// Connects participants to conversations they're involved in.
+CREATE DIRECTED EDGE PARTICIPATES_IN(FROM Person|AIPersona, TO Conversation, role STRING)
+
+// Connects conversations to their constituent messages.
+CREATE DIRECTED EDGE CONTAINS(FROM Conversation, TO Message, sequence_number INT)
+
+// Connects messages to their authors.
+CREATE DIRECTED EDGE AUTHORED_BY(FROM Message, TO Person|AIPersona)
+
+// Knowledge and Learning Relationships
+// Connects AI personas to knowledge they've learned.
+CREATE DIRECTED EDGE LEARNS_FROM(FROM AIPersona, TO Knowledge, learning_strength FLOAT)
+
+// Connects knowledge to the conversations that generated it.
+CREATE DIRECTED EDGE DERIVED_FROM(FROM Knowledge, TO Conversation, relevance_score FLOAT)
+
+// Decision and Reasoning Relationships
+// Connects decisions to the knowledge that influenced them.
+CREATE DIRECTED EDGE INFORMED_BY(FROM Decision, TO Knowledge, influence_weight FLOAT)
+
+// Connects decisions to the conversations that prompted them.
+CREATE DIRECTED EDGE TRIGGERED_BY(FROM Decision, TO Conversation)
+
+// Connects AI personas to decisions they participated in.
+CREATE DIRECTED EDGE PARTICIPATES_IN_DECISION(FROM AIPersona, TO Decision, voting_weight FLOAT)
+
+// Pheromind Relationships
+// Connects pheromones to the decisions they influenced (ambient processing).
+CREATE DIRECTED EDGE INFLUENCES(FROM Pheromone, TO Decision, influence_strength FLOAT)
+
+// Connects pheromones to the knowledge patterns they detected.
+CREATE DIRECTED EDGE DETECTS_PATTERN(FROM Pheromone, TO Knowledge, pattern_confidence FLOAT)
+
+// Connects agents to the pheromones they generated.
+CREATE DIRECTED EDGE GENERATES(FROM KIPAgent, TO Pheromone) 

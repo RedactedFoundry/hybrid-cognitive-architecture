@@ -8,6 +8,10 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
+structlog = "^23.1.0"
+redis = "^5.0.0"
+pytigergraph = "^1.9.0"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"

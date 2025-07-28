@@ -1,0 +1,112 @@
+# docker-compose.yaml
+# Hybrid AI Council - Local Development Environment
+# This compose file sets up the core infrastructure services for local development:
+# - Redis: Ephemeral storage for pheromones and session data
+# - TigerVector: Graph database for persistent knowledge storage
+# - vLLM: Local GPU-accelerated language model inference
+
+services:
+  # Redis Service - Ephemeral Storage
+  # Used for storing pheromones (12-second TTL) and session data
+  # Critical for the Pheromind layer's distributed cognition
+  redis:
+    image: redis:7.2-alpine
+    container_name: hybrid_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    # Health check to ensure Redis is responding to ping commands
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    # Optimize Redis for our use case with reasonable memory limits
+    # Using Redis 7.2 (stable, open source) for production reliability
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    networks:
+      - hybrid_network
+
+  # TigerGraph Service - Persistent Knowledge Graph
+  # Single source of truth for all persistent state and knowledge
+  # Provides both API (14240) and GraphStudio UI (9000) access
+  tigervector:
+    image: tigergraph/tigergraph:latest
+    container_name: hybrid_tigervector
+    restart: unless-stopped
+    ports:
+      - "14240:14240"  # TigerGraph REST API
+      - "9000:9000"    # GraphStudio Web UI
+    volumes:
+      # Persistent storage for graph data - critical for data retention
+      - tigergraph_data:/var/lib/tigergraph/data
+    environment:
+      # Basic TigerGraph configuration
+      - TIGERGRAPH_PASSWORD=tigergraph
+    # Allow time for TigerGraph to initialize (can take 60+ seconds)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - hybrid_network
+
+  # vLLM Service - Local GPU-Accelerated LLM Inference
+  # Provides high-performance local model serving using NVIDIA GPU
+  # Models are cached locally to avoid re-downloading
+  vllm:
+    build:
+      context: .
+      dockerfile: ./docker/vllm/Dockerfile
+    container_name: hybrid_vllm
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # vLLM OpenAI-compatible API
+    volumes:
+      # Cache downloaded models to avoid repeated downloads
+      - vllm_models:/root/.cache/huggingface
+    # GPU access configuration for NVIDIA runtime
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      # CUDA settings for optimal GPU utilization
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+    # vLLM can take 5-10 minutes to load models on first startup
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 600s  # 10 minutes for model loading
+    networks:
+      - hybrid_network
+
+# Named volumes for persistent data storage
+volumes:
+  # TigerGraph data persistence - contains all graph schemas and data
+  tigergraph_data:
+    driver: local
+  
+  # vLLM model cache - prevents re-downloading large language models
+  vllm_models:
+    driver: local
+
+# Isolated network for service communication
+networks:
+  hybrid_network:
+    driver: bridge
+    name: hybrid_cognitive_network 
