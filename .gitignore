@@ -208,3 +208,7 @@ __marimo__/
 
 # Local environment configuration
 .env
+
+# Large Docker images and downloads
+*.tar.gz
+models/

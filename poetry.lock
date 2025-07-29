@@ -445,7 +445,6 @@ description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.13\""
 files = [
     {file = "typing_extensions-4.14.1-py3-none-any.whl", hash = "sha256:d1e1e3b58374dc93031d6eda2420a48ea44a36c2b4766a4fdeb3710755731d76"},
     {file = "typing_extensions-4.14.1.tar.gz", hash = "sha256:38b39f4aeeab64884ce9f74c94263ef78f3c22467c8724005483154c26648d36"},
@@ -487,4 +486,4 @@ crypto-eth-addresses = ["eth-hash[pycryptodome] (>=0.7.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "4bcbe566b4a06417e7764758aaa8847a471684d31c55ff401812614b1a611478"
+content-hash = "a1ffae1fec1dde0fa943ecf277c8fe310a5bd359bf83eaff2fd5f670beb25411"

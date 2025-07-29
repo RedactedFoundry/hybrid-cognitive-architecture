@@ -98,14 +98,26 @@ Reference the 6-week plan to provide context-aware help:
 
 ### **Local Development**
 
-\# Start all services in the background  
-docker-compose up \-d
+\# Start TigerGraph Community Edition (required first step)
+./scripts/setup-tigergraph.sh
 
-\# View logs for a specific service  
+\# Start other services  
+docker-compose up \-d redis vllm
+
+\# Initialize TigerGraph database (first time only)
+python scripts/init_tigergraph.py
+
+\# View logs for services  
+docker logs tigergraph
 docker-compose logs \-f \[service\_name\]
 
-\# Stop and remove all services and volumes (full reset)  
+\# Stop services
+docker-compose down
+docker stop tigergraph
+
+\# Full reset (removes all data)
 docker-compose down \-v
+docker rm \-f tigergraph
 
 ### **Testing**
 
@@ -124,10 +136,12 @@ pytest tests/test\_file.py::test\_function \-v
 
 ## **Critical Reminders (The "Gotchas")**
 
-1. **Cloud ↔ Local:** Always handle potential Tailscale connection failures with timeouts and fallbacks.  
-2. **Redis TTL:** Pheromones expire in **12 seconds**. All related logic must account for this.  
-3. **Cost Tracking:** All LLM calls must have their tokens counted and logged.  
-4. **State Sync:** TigerVector is the single source of truth for persistent state. Redis is ephemeral.  
-5. **Model Startup:** The local vLLM service can take 5-10 minutes to load models. Account for this in startup scripts and health checks.
+1. **TigerGraph Setup:** Community Edition requires manual setup via scripts (not docker-compose). Always run ./scripts/setup-tigergraph.sh first.
+2. **Cloud ↔ Local:** Always handle potential Tailscale connection failures with timeouts and fallbacks.  
+3. **Redis TTL:** Pheromones expire in **12 seconds**. All related logic must account for this.  
+4. **Cost Tracking:** All LLM calls must have their tokens counted and logged.  
+5. **State Sync:** TigerGraph is the single source of truth for persistent state. Redis is ephemeral.  
+6. **Model Startup:** The local vLLM service can take 5-10 minutes to load models. Account for this in startup scripts and health checks.
+7. **Community Edition:** TigerGraph 4.2.0 Community Edition is license-free but requires 2.4GB download from dl.tigergraph.com.
 
 Remember: We are building a production-grade system. Every decision must consider reliability, observability, cost, and above all, **simplicity and maintainability.**

@@ -1,0 +1,16 @@
+# Git files
+.git/
+.gitignore
+
+# Python cache & virtual environment
+__pycache__/
+*.pyc
+.venv/
+
+# Local secrets
+.env
+
+# Scripts and documentation
+scripts/
+docs/
+*.md 

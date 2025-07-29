@@ -33,31 +33,28 @@ services:
     networks:
       - hybrid_network
 
-  # TigerGraph Service - Persistent Knowledge Graph
-  # Single source of truth for all persistent state and knowledge
-  # Provides both API (14240) and GraphStudio UI (9000) access
-  tigervector:
-    image: tigergraph/tigergraph:latest
-    container_name: hybrid_tigervector
-    restart: unless-stopped
-    ports:
-      - "14240:14240"  # TigerGraph REST API
-      - "9000:9000"    # GraphStudio Web UI
-    volumes:
-      # Persistent storage for graph data - critical for data retention
-      - tigergraph_data:/var/lib/tigergraph/data
-    environment:
-      # Basic TigerGraph configuration
-      - TIGERGRAPH_PASSWORD=tigergraph
-    # Allow time for TigerGraph to initialize (can take 60+ seconds)
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/api/ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
-    networks:
-      - hybrid_network
+  # TigerGraph Community Edition - Persistent Knowledge Graph
+  # 
+  # IMPORTANT: TigerGraph Community Edition requires special setup!
+  # Run ./scripts/setup-tigergraph.sh instead of docker-compose for TigerGraph
+  # 
+  # The Community Edition must be loaded from tigergraph-4.2.0-community-docker-image.tar.gz
+  # which is not available on Docker Hub. Use the setup script for automated deployment.
+  #
+  # After running setup-tigergraph.sh, TigerGraph will be available at:
+  # - GraphStudio UI: http://localhost:14240
+  # - REST API: http://localhost:14240/restpp
+  # - Default credentials: tigergraph/tigergraph
+  #
+  # tigervector:
+  #   image: tigergraph/community:4.2.0
+  #   container_name: hybrid_tigervector
+  #   restart: unless-stopped
+  #   ports:
+  #     - "14240:14240"  # TigerGraph GraphStudio and REST API
+  #   init: true
+  #   networks:
+  #     - hybrid_network
 
   # vLLM Service - Local GPU-Accelerated LLM Inference
   # Provides high-performance local model serving using NVIDIA GPU
@@ -71,8 +68,10 @@ services:
     ports:
       - "8000:8000"  # vLLM OpenAI-compatible API
     volumes:
-      # Cache downloaded models to avoid repeated downloads
-      - vllm_models:/root/.cache/huggingface
+      # Mount local model directories directly to HuggingFace cache paths
+      - ./models/qwen3-14b-awq:/root/.cache/huggingface/hub/models--Qwen--Qwen3-14B-AWQ
+      - ./models/deepseek-coder-v2-instruct-fp8:/root/.cache/huggingface/hub/models--neuralmagic--DeepSeek-Coder-V2-Instruct-FP8
+      - ./models/mistral-7b-instruct-v0.3-awq:/root/.cache/huggingface/hub/models--solidrust--Mistral-7B-Instruct-v0.3-AWQ
     # GPU access configuration for NVIDIA runtime
     deploy:
       resources:
@@ -85,25 +84,19 @@ services:
       # CUDA settings for optimal GPU utilization
       - NVIDIA_VISIBLE_DEVICES=all
       - CUDA_VISIBLE_DEVICES=0
-    # vLLM can take 5-10 minutes to load models on first startup
+    # vLLM loads faster with pre-mounted models
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 600s  # 10 minutes for model loading
+      retries: 8
+      start_period: 300s  # 5 minutes for model loading (faster with mounted models)
     networks:
       - hybrid_network
 
 # Named volumes for persistent data storage
-volumes:
-  # TigerGraph data persistence - contains all graph schemas and data
-  tigergraph_data:
-    driver: local
-  
-  # vLLM model cache - prevents re-downloading large language models
-  vllm_models:
-    driver: local
+# TigerGraph Community Edition manages its own data persistence
+# No explicit Docker volumes needed
 
 # Isolated network for service communication
 networks:
