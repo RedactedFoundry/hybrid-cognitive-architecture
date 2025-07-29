@@ -14,14 +14,14 @@ CREATE VERTEX AIPersona(PRIMARY_ID id STRING, name STRING, version INT, created_
 
 // A vertex to store preferences, which can be linked to a Person or AIPersona.
 // This allows for dynamic, data-driven personalities and user modeling.
-CREATE VERTEX Preference(PRIMARY_ID key STRING, value STRING, type STRING, confidence FLOAT, timestamp DATETIME)
+CREATE VERTEX Preference(PRIMARY_ID pref_id STRING, value STRING, pref_type STRING, confidence FLOAT, timestamp DATETIME)
 
 // Agent and Tool Vertices
 // A vertex representing an autonomous KIP (Knowledge-Incentive Protocol) agent.
 CREATE VERTEX KIPAgent(PRIMARY_ID id STRING, function STRING, status STRING, created_at DATETIME)
 
 // A vertex representing a tool or skill the AI can use.
-CREATE VERTEX Tool(PRIMARY_ID name STRING, description STRING, type STRING, version STRING)
+CREATE VERTEX Tool(PRIMARY_ID name STRING, description STRING, tool_type STRING, version STRING)
 
 // Conversation and Memory Vertices
 // A vertex representing a conversation session with temporal context.

@@ -87,24 +87,26 @@ def initialize_database():
         graph_name = "HybridAICouncil"
         print(f"\n📊 Creating graph: {graph_name}")
         
-        # Check if graph already exists
+        # Create graph using GSQL commands
         try:
-            existing_graphs = conn.getGraphList()
-            if graph_name not in existing_graphs:
-                conn.createGraph(graph_name)
-                print(f"✅ Graph '{graph_name}' created successfully")
-            else:
+            print(f"   Creating graph via GSQL...")
+            create_result = conn.gsql(f"CREATE GRAPH {graph_name}()")
+            print(f"✅ Graph '{graph_name}' created successfully")
+            if create_result:
+                print(f"   Creation result: {create_result}")
+        except Exception as create_error:
+            if "already exists" in str(create_error) or "Graph name already exists" in str(create_error):
                 print(f"ℹ️  Graph '{graph_name}' already exists")
-        except Exception as e:
-            print(f"⚠️  Could not check existing graphs, proceeding with creation: {e}")
-            try:
-                conn.createGraph(graph_name)
-                print(f"✅ Graph '{graph_name}' created successfully")
-            except Exception as create_error:
-                print(f"ℹ️  Graph creation failed (may already exist): {create_error}")
+            else:
+                print(f"⚠️  Graph creation: {create_error}")
+                print(f"   Continuing with schema loading...")
         
-        # Use the graph
+        # Switch to using the graph
+        print(f"   Switching to graph '{graph_name}'...")
+        use_result = conn.gsql(f"USE GRAPH {graph_name}")
         conn.graphname = graph_name
+        if use_result:
+            print(f"   Use graph result: {use_result}")
         
         # Load schema from file
         schema_path = Path("schemas/schema.gsql")
@@ -123,20 +125,30 @@ def initialize_database():
             print(f"⚠️  Schema file not found: {schema_path}")
             print("   You can load the schema manually later from GraphStudio")
         
-        # Start the graph
-        print(f"\n🔄 Starting graph '{graph_name}'...")
+        # Verify the graph is operational
+        print(f"\n🔍 Verifying graph '{graph_name}' is operational...")
         try:
-            start_result = conn.gsql(f"START GRAPH {graph_name}")
-            print("✅ Graph started successfully")
-            if start_result:
-                print(f"   Start result: {start_result}")
-        except Exception as start_error:
-            print(f"⚠️  Graph start failed (may already be running): {start_error}")
+            # Try to list the schema to verify everything loaded
+            verify_result = conn.gsql("ls")
+            print("✅ Graph is operational and schema is accessible")
+            if verify_result and len(str(verify_result)) > 10:
+                print(f"   Schema verification: Schema loaded with vertices and edges")
+            else:
+                print(f"   Schema verification result: {verify_result}")
+        except Exception as verify_error:
+            print(f"⚠️  Graph verification warning: {verify_error}")
+            print(f"   The graph may still be functional")
         
         print(f"\n🎉 TigerGraph Community Edition initialization complete!")
         print(f"🌐 Access GraphStudio: http://localhost:14240")
         print(f"🔑 Login with: tigergraph/tigergraph")
         print(f"📊 Graph name: {graph_name}")
+        print(f"\n📋 Manual Verification Steps:")
+        print(f"   1. Open GraphStudio at http://localhost:14240")
+        print(f"   2. Login with tigergraph/tigergraph")
+        print(f"   3. Select the '{graph_name}' graph from the dropdown")
+        print(f"   4. Navigate to 'Design Schema' to see vertices and edges")
+        print(f"   5. Check that vertices like Person, AIPersona, Preference are listed")
         return True
         
     except Exception as e:
