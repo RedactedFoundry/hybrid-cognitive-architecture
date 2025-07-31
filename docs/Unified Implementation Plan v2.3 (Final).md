@@ -116,6 +116,8 @@ This is our high-level roadmap, incorporating the safer, more methodical "Local 
   * **Story 20.2:** Budget Enforcement: Implement daily budget checks and automatic throttling.  
 * **Epic 21: Advanced Chaos Engineering**  
   * **Story 21.1:** Network Partition Testing: Write scripts to verify system fallback behavior when the Tailscale connection is dropped.
+  * **Story 21.2:** Refactor Core Logic: Refactor main.py and core/orchestrator.py to improve modularity and separation of concerns now that the full cognitive architecture is complete
+  * **Story 21.3:** Implement Smart Routing: Implement a triage/routing node in the orchestrator that can send simple queries to a faster, 2-phase response path, while sending complex queries to the full 3-phase deliberation path
 
 ### **Sprint 6: Interface & Final Validation (Week 6\)**
 
