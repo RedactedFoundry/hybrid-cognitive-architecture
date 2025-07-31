@@ -234,7 +234,7 @@ ollama = "^0.3.3"           # Ollama client (working)
 ### **Can Regenerate if Lost**
 - `docker-compose.yaml` - Simple Redis setup
 - `test_*.py` files - Can recreate for testing
-- `llama.cpp/` - Can rebuild if needed for future model merging
+- `llama.cpp/` - DELETED (was only needed for failed model merge experiment)
 
 ## 🏆 **SUCCESS METRICS TO VALIDATE**
 
