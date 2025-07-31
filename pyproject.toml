@@ -44,6 +44,7 @@ pyyaml = "^6.0"
 
 # Ollama client for multi-model LLM serving
 # Will use OpenAI-compatible API via HTTP requests (aiohttp already included)
+python-multipart = "^0.0.20"
 
 [tool.poetry.group.dev.dependencies]
 # Testing framework

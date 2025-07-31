@@ -54,8 +54,8 @@ This is our high-level roadmap, incorporating the safer, more methodical "Local 
 * **Epic 3: Observability Platform**  
   * **Story 3.1:** Structured Logging: Implement consistent, queryable JSON logging across all future components using structlog.  
 * **Epic 4: Local Infrastructure Deployment**  
-  * **Story 4.1:** Docker Compose Setup (vllm, tigervector, redis).  
-  * **Story 4.2:** Custom vLLM Dockerfile (with model pre-loading).  
+  * **Story 4.1:** Docker Compose Setup (tigervector, redis).
+  * **Story 4.2:** Ollama native setup and model configuration.  
 * **Epic 5: Local Memory Definition**  
   * **Story 5.1:** TigerVector Schema (schema.gsql).  
   * **Story 5.2:** Database Clients (tigervector\_client.py, redis\_client.py).
@@ -64,7 +64,7 @@ This is our high-level roadmap, incorporating the safer, more methodical "Local 
 
 * **Epic 6: The Council Orchestrator**  
   * **Story 6.1:** Basic LangGraph State Machine (UserFacingOrchestrator class).  
-  * **Story 6.2:** LLM Integration (call local vLLM service).  
+  * **Story 6.2:** LLM Integration (call local Ollama service).  
 * **Epic 7: State Management Infrastructure**  
   * **Story 7.1:** Request ID Implementation: Implement request ID generation in the WebSocket handler and pass it through the LangGraph state.  
 * **Epic 8: The API Layer**  
@@ -84,6 +84,9 @@ This is our high-level roadmap, incorporating the safer, more methodical "Local 
   * **Story 11.3:** Implement First Live Data Tool. The goal for this story will be to create a simple tool (e.g., one that fetches the current weather or a stock price) and integrate it into our first KIP agent.
 * **Epic 12: Chaos Engineering**  
   * **Story 12.1:** Service Failure Testing: Write scripts to test graceful degradation when Redis or TigerVector is unavailable locally.
+* **Epic 12.5: Voice Foundation**
+  * **Story 12.6:** Voice Foundation Integration: Integrate the voice foundation services (STT/TTS) into the streaming architecture and simple test.
+  * **Story 12.7:** Total System Validation: Conduct a comprehensive validation of the MVP, including performance, security, and user experience.
 
 ### **Sprint 4: Cloud Migration & Persistence (Week 4\)**
 

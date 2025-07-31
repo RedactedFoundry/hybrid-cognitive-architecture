@@ -19,7 +19,7 @@ This document represents the complete and final architectural plan for the **\[S
 | Component | Technology Selection | Deployment Location | Primary Function |
 | :---- | :---- | :---- | :---- |
 | **Local LLM Ensemble** | Qwen3-14B-AWQ, DeepSeek-Coder-V2-Instruct-FP8, Mistral-7B-Instruct-v0.3-AWQ | **Local Rig (RTX 4090\)** | The core trio of specialized models for reasoning, complex task execution, and speed. |
-| **LLM Runtime** | vLLM \+ TensorRT | **Local Rig (RTX 4090\)** | Provides high-throughput, low-latency inference for the local LLM ensemble. |
+| **LLM Runtime** | Ollama | **Local Rig (RTX 4090\)** | Provides high-throughput, low-latency inference for the local LLM ensemble. |
 | **Hybrid Database** | TigerVector (in Docker) | **Cloud (Render)** | The permanent long-term memory store, combining graph relationships and vector search. |
 | **User & AI Persona Model** | Dedicated Graph Schema | **Cloud (Render)** | A dynamic model of the user's goals AND the AI's own personality/tone for deep alignment. |
 | **Multi-hop Memory** | HippoRAG 2 | **Cloud (Render)** | An overlay service for the Hybrid DB that enables complex, multi-step queries. |

@@ -94,11 +94,11 @@ export TIGERGRAPH_PASSWORD="tigergraph"
 2. It requires manual download and loading
 3. The automated setup scripts handle this process
 
-Other services (Redis, vLLM) use docker-compose normally:
+Other services (Redis) use docker-compose normally:
 
 ```bash
 # Start other services
-docker-compose up -d redis vllm
+docker-compose up -d redis
 
 # TigerGraph runs separately via setup scripts
 ./scripts/setup-tigergraph.sh
@@ -256,7 +256,7 @@ GSQL> @/home/tigergraph/schemas/schema.gsql
 
 2. **Start other services**:
    ```bash
-   docker-compose up -d redis vllm
+   docker-compose up -d redis
    ```
 
 3. **Initialize database** (first time only):
@@ -290,8 +290,8 @@ GSQL> @/home/tigergraph/schemas/schema.gsql
 - **Connection**: `redis://localhost:6379`
 - **Purpose**: Pheromind ephemeral data (12s TTL)
 
-### vLLM (Local AI Models)
-- **Connection**: `http://localhost:8000`
+### Ollama (Local AI Models)
+- **Connection**: `http://localhost:11434`
 - **Purpose**: Local AI model inference
 
 ### TigerGraph (Knowledge Persistence)

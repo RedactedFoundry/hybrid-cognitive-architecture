@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Voice Chat - Hybrid AI Council</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e1e1e1;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(20, 20, 40, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            border: 1px solid rgba(147, 112, 219, 0.2);
+        }
+        h1 {
+            color: #9370db;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(147, 112, 219, 0.5);
+        }
+        .subtitle {
+            text-align: center;
+            color: #b19cd9;
+            margin-bottom: 30px;
+        }
+        .voice-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+            gap: 20px;
+        }
+        .mic-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: none;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mic-button.inactive {
+            background: linear-gradient(135deg, #4a4a6a, #353a5f);
+            color: #b19cd9;
+            border: 2px solid rgba(147, 112, 219, 0.3);
+        }
+        .mic-button.listening {
+            background: linear-gradient(135deg, #8a2be2, #9370db);
+            color: white;
+            animation: pulse 1.5s infinite;
+            border: 2px solid rgba(147, 112, 219, 0.6);
+        }
+        .mic-button.speaking {
+            background: linear-gradient(135deg, #da70d6, #ba55d3);
+            color: white;
+            animation: glow 1s infinite alternate;
+            border: 2px solid rgba(218, 112, 214, 0.8);
+        }
+        .mic-button.processing {
+            background: linear-gradient(135deg, #6a5acd, #9370db);
+            color: white;
+            animation: spin 2s linear infinite;
+            border: 2px solid rgba(147, 112, 219, 1);
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(147, 112, 219, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(147, 112, 219, 0.4); }
+            100% { transform: scale(1); box-shadow: 0 0 0 20px rgba(147, 112, 219, 0); }
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 0 20px rgba(218, 112, 214, 0.8); }
+            100% { box-shadow: 0 0 40px rgba(218, 112, 214, 1); }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status-display {
+            text-align: center;
+            margin: 20px 0;
+            min-height: 60px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 12px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .status.listening { background: rgba(147, 112, 219, 0.2); color: #dda0dd; border: 1px solid rgba(147, 112, 219, 0.4); }
+        .status.speaking { background: rgba(218, 112, 214, 0.2); color: #da70d6; border: 1px solid rgba(218, 112, 214, 0.4); }
+        .status.processing { background: rgba(106, 90, 205, 0.2); color: #9370db; border: 1px solid rgba(106, 90, 205, 0.4); }
+        .status.response { background: rgba(186, 85, 211, 0.2); color: #ba55d3; border: 1px solid rgba(186, 85, 211, 0.4); }
+        .status.error { background: rgba(255, 105, 180, 0.2); color: #ff69b4; border: 1px solid rgba(255, 105, 180, 0.4); }
+        .conversation {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(147, 112, 219, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            background: rgba(10, 10, 25, 0.5);
+            backdrop-filter: blur(5px);
+        }
+        .message {
+            margin: 15px 0;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+        }
+        .user-message {
+            background: rgba(147, 112, 219, 0.2);
+            border: 1px solid rgba(147, 112, 219, 0.4);
+            margin-left: auto;
+            text-align: right;
+            color: #dda0dd;
+        }
+        .ai-message {
+            background: rgba(106, 90, 205, 0.2);
+            border: 1px solid rgba(106, 90, 205, 0.4);
+            margin-right: auto;
+            color: #b19cd9;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .control-btn.clear {
+            background: linear-gradient(135deg, #ff69b4, #da70d6);
+            color: white;
+            border: 1px solid rgba(255, 105, 180, 0.4);
+        }
+        .control-btn.settings {
+            background: linear-gradient(135deg, #8a2be2, #9370db);
+            color: white;
+            border: 1px solid rgba(147, 112, 219, 0.4);
+        }
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(147, 112, 219, 0.3);
+        }
+        .settings-panel {
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid rgba(147, 112, 219, 0.3);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: none;
+            backdrop-filter: blur(5px);
+        }
+        .settings-panel h4 {
+            color: #9370db;
+            margin-bottom: 15px;
+        }
+        .settings-panel label {
+            color: #b19cd9;
+            display: block;
+            margin: 10px 0;
+        }
+        .settings-panel input[type="range"] {
+            background: rgba(147, 112, 219, 0.2);
+            margin: 0 10px;
+        }
+        .settings-panel input[type="checkbox"] {
+            accent-color: #9370db;
+            margin-right: 8px;
+        }
+        .volume-meter {
+            width: 200px;
+            height: 10px;
+            background: rgba(20, 20, 40, 0.6);
+            border: 1px solid rgba(147, 112, 219, 0.3);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px auto;
+        }
+        .volume-level {
+            height: 100%;
+            background: linear-gradient(90deg, #9370db, #da70d6, #ff69b4);
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Real-Time Voice Chat</h1>
+        <p class="subtitle">Natural conversation with the Hybrid AI Council</p>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <a href="/static/index.html" style="display: inline-block; padding: 6px 12px; margin: 0 5px; background: linear-gradient(135deg, #6a5acd, #9370db); color: white; text-decoration: none; border-radius: 6px; font-size: 14px; border: 1px solid rgba(147, 112, 219, 0.4);">💬 Text Chat</a>
+            <a href="/static/realtime-voice.html" style="display: inline-block; padding: 6px 12px; margin: 0 5px; background: linear-gradient(135deg, #da70d6, #ba55d3); color: white; text-decoration: none; border-radius: 6px; font-size: 14px; border: 1px solid rgba(218, 112, 214, 0.6);">🎤 Real-Time Voice</a>
+            <a href="/static/voice-test.html" style="display: inline-block; padding: 6px 12px; margin: 0 5px; background: linear-gradient(135deg, #8a2be2, #9370db); color: white; text-decoration: none; border-radius: 6px; font-size: 14px; border: 1px solid rgba(147, 112, 219, 0.4);">📁 Voice Upload</a>
+        </div>
+        
+        <div class="voice-controls">
+            <button id="micButton" class="mic-button inactive" onclick="toggleMicrophone()">
+                🎤
+            </button>
+        </div>
+        
+        <div class="volume-meter">
+            <div id="volumeLevel" class="volume-level"></div>
+        </div>
+        
+        <div class="status-display">
+            <div id="statusMessage" class="status">
+                Click the microphone to start your conversation
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn clear" onclick="clearConversation()">Clear Chat</button>
+            <button class="control-btn settings" onclick="toggleSettings()">Settings</button>
+        </div>
+        
+        <div id="settingsPanel" class="settings-panel">
+            <h4>Voice Settings</h4>
+            <label>
+                Voice Activity Threshold:
+                <input type="range" id="vadThreshold" min="0.001" max="0.1" step="0.001" value="0.01">
+                <span id="vadValue">0.01</span>
+            </label>
+            <br><br>
+            <label>
+                <input type="checkbox" id="autoStopRecording" checked> Auto-stop recording after silence
+            </label>
+        </div>
+        
+        <div id="conversation" class="conversation">
+            <div class="message ai-message">
+                ✨ Hello! I'm your AI Council. Start speaking and I'll respond in real-time through our 3-layer cognitive architecture. Click the microphone to begin our natural voice conversation! 🎤
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let isListening = false;
+        let mediaRecorder = null;
+        let audioStream = null;
+        let websocket = null;
+        let audioContext = null;
+        let analyser = null;
+        let vadThreshold = 0.01;
+        let silenceTimer = null;
+        let isProcessing = false;
+        
+        // Initialize the voice chat system
+        async function initializeVoiceChat() {
+            try {
+                // Request microphone access
+                audioStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } 
+                });
+                
+                // Set up audio analysis for voice activity detection
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(audioStream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+                
+                // Start voice activity detection
+                startVoiceActivityDetection();
+                
+                updateStatus('Microphone ready - click to start conversation', 'ready');
+                
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                updateStatus('Microphone access denied. Please allow microphone access and refresh.', 'error');
+            }
+        }
+        
+        // Voice Activity Detection
+        function startVoiceActivityDetection() {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            function detectVoice() {
+                if (!analyser) return;
+                
+                analyser.getByteFrequencyData(dataArray);
+                
+                // Calculate average volume
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / bufferLength / 255;
+                
+                // Update volume meter
+                const volumeLevel = document.getElementById('volumeLevel');
+                volumeLevel.style.width = (average * 100) + '%';
+                
+                // Voice activity detection logic
+                if (isListening && !isProcessing) {
+                    if (average > vadThreshold) {
+                        // Voice detected
+                        if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+                            startRecording();
+                        }
+                        
+                        // Clear silence timer
+                        if (silenceTimer) {
+                            clearTimeout(silenceTimer);
+                            silenceTimer = null;
+                        }
+                    } else {
+                        // Silence detected
+                        if (mediaRecorder && mediaRecorder.state === 'recording' && 
+                            document.getElementById('autoStopRecording').checked) {
+                            
+                            if (!silenceTimer) {
+                                silenceTimer = setTimeout(() => {
+                                    stopRecording();
+                                }, 1500); // Stop after 1.5 seconds of silence
+                            }
+                        }
+                    }
+                }
+                
+                requestAnimationFrame(detectVoice);
+            }
+            
+            detectVoice();
+        }
+        
+        // Microphone control
+        function toggleMicrophone() {
+            if (!audioStream) {
+                initializeVoiceChat();
+                return;
+            }
+            
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        }
+        
+        function startListening() {
+            isListening = true;
+            updateMicButton('listening');
+            updateStatus('Listening... Start speaking!', 'listening');
+            
+            // Connect to WebSocket
+            connectWebSocket();
+        }
+        
+        function stopListening() {
+            isListening = false;
+            
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
+            }
+            
+            updateMicButton('inactive');
+            updateStatus('Click to start conversation', 'ready');
+            
+            // Close WebSocket
+            if (websocket) {
+                websocket.close();
+            }
+        }
+        
+        // Recording control
+        function startRecording() {
+            if (!audioStream || isProcessing) return;
+            
+            try {
+                mediaRecorder = new MediaRecorder(audioStream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+                
+                const audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    sendAudioToServer(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                updateMicButton('speaking');
+                updateStatus('Recording... Keep talking!', 'speaking');
+                
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                updateStatus('Recording error: ' + error.message, 'error');
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                updateMicButton('processing');
+                updateStatus('Processing your voice through AI Council...', 'processing');
+                isProcessing = true;
+            }
+        }
+        
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/voice`;
+            
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = () => {
+                console.log('WebSocket connected');
+            };
+            
+            websocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatus('Connection error - please refresh and try again', 'error');
+            };
+            
+            websocket.onclose = () => {
+                console.log('WebSocket disconnected');
+            };
+        }
+        
+        function sendAudioToServer(audioBlob) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                updateStatus('Connection error - please try again', 'error');
+                isProcessing = false;
+                updateMicButton('listening');
+                return;
+            }
+            
+            // Convert blob to base64 and send
+            const reader = new FileReader();
+            reader.onload = () => {
+                const audioData = reader.result.split(',')[1]; // Remove data:audio/webm;base64,
+                
+                websocket.send(JSON.stringify({
+                    type: 'voice_input',
+                    audio_data: audioData,
+                    conversation_id: 'realtime_' + Date.now()
+                }));
+            };
+            reader.readAsDataURL(audioBlob);
+        }
+        
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'transcription':
+                    addMessage(data.text, 'user');
+                    updateStatus('Processing through AI Council...', 'processing');
+                    break;
+                    
+                case 'ai_response':
+                    addMessage(data.text, 'ai');
+                    // Play audio response if provided
+                    if (data.audio_url) {
+                        playAudioResponse(data.audio_url);
+                    }
+                    updateStatus('Response complete - continue talking!', 'response');
+                    isProcessing = false;
+                    updateMicButton('listening');
+                    break;
+                    
+                case 'error':
+                    updateStatus('Error: ' + data.message, 'error');
+                    isProcessing = false;
+                    updateMicButton('listening');
+                    break;
+                    
+                case 'processing_update':
+                    updateStatus(data.message, 'processing');
+                    break;
+            }
+        }
+        
+        function playAudioResponse(audioUrl) {
+            console.log('🎵 Playing audio response:', audioUrl);
+            updateMicButton('speaking');
+            updateStatus('AI is speaking...', 'response');
+            
+            const audio = new Audio(audioUrl);
+            
+            // Handle audio events
+            audio.addEventListener('loadstart', () => {
+                console.log('🎵 Audio loading started');
+            });
+            
+            audio.addEventListener('canplay', () => {
+                console.log('🎵 Audio ready to play');
+            });
+            
+            audio.addEventListener('ended', () => {
+                console.log('🎵 Audio playback finished');
+                updateMicButton('listening');
+                updateStatus('Continue speaking...', 'listening');
+            });
+            
+            audio.addEventListener('error', (e) => {
+                console.error('🎵 Audio error:', e);
+                updateStatus('Audio playback failed', 'error');
+                updateMicButton('listening');
+            });
+            
+            // Set volume and play
+            audio.volume = 0.8;
+            
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log('🎵 Audio playing successfully');
+                }).catch(error => {
+                    console.error('🎵 Autoplay failed:', error);
+                    updateStatus('Click to play audio response', 'error');
+                    
+                    // Add click-to-play fallback
+                    const playButton = document.createElement('button');
+                    playButton.textContent = '🔊 Click to hear AI response';
+                    playButton.style.margin = '10px';
+                    playButton.style.padding = '10px';
+                    playButton.style.background = 'linear-gradient(135deg, #9370db, #ba55d3)';
+                    playButton.style.color = 'white';
+                    playButton.style.border = 'none';
+                    playButton.style.borderRadius = '8px';
+                    playButton.style.cursor = 'pointer';
+                    
+                    playButton.onclick = () => {
+                        audio.play();
+                        playButton.remove();
+                    };
+                    
+                    document.getElementById('conversation').appendChild(playButton);
+                });
+            }
+        }
+        
+        // UI Updates
+        function updateMicButton(state) {
+            const button = document.getElementById('micButton');
+            button.className = `mic-button ${state}`;
+            
+            switch (state) {
+                case 'inactive':
+                    button.textContent = '🎤';
+                    break;
+                case 'listening':
+                    button.textContent = '👂';
+                    break;
+                case 'speaking':
+                    button.textContent = '🗣️';
+                    break;
+                case 'processing':
+                    button.textContent = '🧠';
+                    break;
+            }
+        }
+        
+        function updateStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+        
+        function addMessage(text, sender) {
+            const conversation = document.getElementById('conversation');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = text;
+            conversation.appendChild(messageDiv);
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+        
+        // Control functions
+        function clearConversation() {
+            const conversation = document.getElementById('conversation');
+            conversation.innerHTML = '<div class="message ai-message">Conversation cleared. Ready for new chat!</div>';
+        }
+        
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // Settings
+        document.getElementById('vadThreshold').addEventListener('input', (e) => {
+            vadThreshold = parseFloat(e.target.value);
+            document.getElementById('vadValue').textContent = vadThreshold.toFixed(3);
+        });
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            updateStatus('Click microphone to start conversation', 'ready');
+        });
+    </script>
+</body>
+</html>

@@ -110,51 +110,51 @@ def test_redis():
         print(f"❌ Redis test failed: {e}")
         return False
 
-def test_vllm():
-    """Test vLLM local AI model service"""
-    print("\n🔍 Testing vLLM...")
+def test_ollama():
+    """Test Ollama local AI model service"""
+    print("\n🔍 Testing Ollama...")
     
     try:
         # Test health endpoint
-        health_response = requests.get("http://localhost:8000/health", timeout=10)
+        health_response = requests.get("http://localhost:11434/api/tags", timeout=10)
         if health_response.status_code == 200:
-            print("✅ vLLM health check: PASSED")
+            print("✅ Ollama health check: PASSED")
         else:
-            print(f"❌ vLLM health check failed: {health_response.status_code}")
-            print("💡 Run: docker-compose up -d vllm")
+            print(f"❌ Ollama health check failed: {health_response.status_code}")
+            print("💡 Run: ollama serve")
             return False
         
         # Test models endpoint
-        models_response = requests.get("http://localhost:8000/v1/models", timeout=10)
+        models_response = requests.get("http://localhost:11434/api/tags", timeout=10)
         if models_response.status_code == 200:
             models = models_response.json()
-            model_count = len(models.get('data', []))
-            print(f"✅ vLLM models available: {model_count}")
+            model_count = len(models.get('models', []))
+            print(f"✅ Ollama models available: {model_count}")
             
             if model_count > 0:
-                for model in models['data']:
-                    model_id = model.get('id', 'unknown')
+                for model in models['models']:
+                    model_id = model.get('name', 'unknown')
                     print(f"   📦 Model: {model_id}")
             else:
-                print("⚠️  No models loaded in vLLM")
-                print("💡 Check: docker logs hybrid_vllm")
+                print("⚠️  No models loaded in Ollama")
+                print("💡 Pull models: ollama pull qwen2.5:14b-instruct")
         else:
-            print(f"❌ vLLM models endpoint failed: {models_response.status_code}")
+            print(f"❌ Ollama models endpoint failed: {models_response.status_code}")
             return False
         
-        print("✅ vLLM: PASSED")
+        print("✅ Ollama: PASSED")
         return True
         
     except requests.exceptions.ConnectionError:
-        print("❌ vLLM connection failed - service not running")
-        print("💡 Run: docker-compose up -d vllm")
+        print("❌ Ollama connection failed - service not running")
+        print("💡 Run: ollama serve")
         return False
     except requests.exceptions.Timeout:
-        print("❌ vLLM connection timeout")
-        print("💡 vLLM may still be starting up (can take 5-10 minutes)")
+        print("❌ Ollama connection timeout")
+        print("💡 Ollama may still be starting up")
         return False
     except Exception as e:
-        print(f"❌ vLLM test failed: {e}")
+        print(f"❌ Ollama test failed: {e}")
         return False
 
 def test_docker_services():
@@ -186,12 +186,7 @@ def test_docker_services():
             print("❌ Redis container: Not running")
             print("💡 Run: docker-compose up -d redis")
         
-        # Check for vLLM
-        if "vllm" in running_containers:
-            print("✅ vLLM container: Running")
-        else:
-            print("❌ vLLM container: Not running")
-            print("💡 Run: docker-compose up -d vllm")
+        # Note: Ollama runs natively on Windows, not in Docker
         
         return True
         
@@ -287,7 +282,7 @@ def main():
         ("Docker Services", test_docker_services),
         ("TigerGraph Community Edition", test_tigergraph),
         ("Redis", test_redis),
-        ("vLLM", test_vllm)
+        ("Ollama", test_ollama)
     ]
     
     results = []

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Foundation Test - Hybrid AI Council</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f7fa;
+            color: #2c3e50;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2980b9;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+        .upload-section:hover {
+            border-color: #2980b9;
+            background: #f8f9fa;
+        }
+        .upload-section.dragover {
+            border-color: #27ae60;
+            background: #e8f5e8;
+        }
+        input[type="file"] {
+            margin: 15px 0;
+        }
+        button {
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #3498db;
+        }
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .result-section {
+            margin-top: 30px;
+            display: none;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .transcription, .response {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #2980b9;
+        }
+        .audio-player {
+            margin: 15px 0;
+            width: 100%;
+        }
+        .processing {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2980b9;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Foundation Test</h1>
+        <p>Test the Hybrid AI Council's voice capabilities. Upload an audio file and receive an AI response!</p>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <a href="/static/index.html" style="display: inline-block; padding: 6px 12px; margin: 0 5px; background: #2980b9; color: white; text-decoration: none; border-radius: 6px; font-size: 14px;">💬 Text Chat</a>
+            <a href="/static/realtime-voice.html" style="display: inline-block; padding: 6px 12px; margin: 0 5px; background: #e74c3c; color: white; text-decoration: none; border-radius: 6px; font-size: 14px;">🎤 Real-Time Voice</a>
+            <a href="/static/voice-test.html" style="display: inline-block; padding: 6px 12px; margin: 0 5px; background: #27ae60; color: white; text-decoration: none; border-radius: 6px; font-size: 14px;">📁 Voice Upload</a>
+        </div>
+        
+        <div class="upload-section" id="uploadSection">
+            <h3>📁 Upload Audio File</h3>
+            <p>Supported formats: WAV, MP3, M4A, OGG</p>
+            <input type="file" id="audioFile" accept=".wav,.mp3,.m4a,.ogg" />
+            <br>
+            <label for="conversationId">Conversation ID (optional):</label>
+            <input type="text" id="conversationId" placeholder="Leave blank for new conversation" style="margin: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <br>
+            <button onclick="uploadAudio()" id="uploadButton">🚀 Start Voice Chat</button>
+        </div>
+        
+        <div class="result-section" id="resultSection">
+            <h3>🎯 Results</h3>
+            <div id="status"></div>
+            <div id="transcription"></div>
+            <div id="response"></div>
+            <div id="audioResponse"></div>
+            <div id="stats"></div>
+        </div>
+    </div>
+
+    <script>
+        // Drag and drop functionality
+        const uploadSection = document.getElementById('uploadSection');
+        const audioFile = document.getElementById('audioFile');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadSection.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadSection.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadSection.addEventListener(eventName, unhighlight, false);
+        });
+        
+        uploadSection.addEventListener('drop', handleDrop, false);
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function highlight() {
+            uploadSection.classList.add('dragover');
+        }
+        
+        function unhighlight() {
+            uploadSection.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            audioFile.files = files;
+        }
+        
+        async function uploadAudio() {
+            const fileInput = document.getElementById('audioFile');
+            const conversationId = document.getElementById('conversationId').value;
+            const uploadButton = document.getElementById('uploadButton');
+            const resultSection = document.getElementById('resultSection');
+            const status = document.getElementById('status');
+            
+            if (!fileInput.files[0]) {
+                alert('Please select an audio file first!');
+                return;
+            }
+            
+            // Show processing state
+            uploadButton.disabled = true;
+            uploadButton.textContent = '🔄 Processing...';
+            resultSection.style.display = 'block';
+            status.innerHTML = `
+                <div class="status info">
+                    <div class="processing">
+                        <div class="spinner"></div>
+                        <p>Processing your voice request through the 3-layer cognitive architecture...</p>
+                        <p>This may take 30-60 seconds for full deliberation.</p>
+                    </div>
+                </div>
+            `;
+            
+            const formData = new FormData();
+            formData.append('audio', fileInput.files[0]);
+            if (conversationId) {
+                formData.append('conversation_id', conversationId);
+            }
+            
+            try {
+                const response = await fetch('/api/voice/chat', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displaySuccess(result);
+                } else {
+                    displayError(result.error || 'Unknown error occurred');
+                }
+                
+            } catch (error) {
+                displayError(`Network error: ${error.message}`);
+            } finally {
+                uploadButton.disabled = false;
+                uploadButton.textContent = '🚀 Start Voice Chat';
+            }
+        }
+        
+        function displaySuccess(result) {
+            const status = document.getElementById('status');
+            const transcription = document.getElementById('transcription');
+            const response = document.getElementById('response');
+            const audioResponse = document.getElementById('audioResponse');
+            const stats = document.getElementById('stats');
+            
+            status.innerHTML = `
+                <div class="status success">
+                    ✅ Voice processing completed successfully!
+                    <br>Request ID: ${result.request_id}
+                    <br>Processing time: ${result.processing_time.toFixed(2)} seconds
+                </div>
+            `;
+            
+            transcription.innerHTML = `
+                <div class="transcription">
+                    <h4>📝 Transcription</h4>
+                    <p>${result.transcription}</p>
+                </div>
+            `;
+            
+            response.innerHTML = `
+                <div class="response">
+                    <h4>🧠 AI Response</h4>
+                    <p>${result.response_text}</p>
+                </div>
+            `;
+            
+            if (result.audio_url) {
+                audioResponse.innerHTML = `
+                    <h4>🔊 Audio Response</h4>
+                    <audio controls class="audio-player">
+                        <source src="${result.audio_url}" type="audio/wav">
+                        Your browser does not support the audio element.
+                    </audio>
+                `;
+            }
+            
+            if (result.orchestrator_stats) {
+                const stats_html = `
+                    <h4>📊 Processing Statistics</h4>
+                    <ul>
+                        <li>Processing Phase: ${result.orchestrator_stats.phases_completed || 'completed'}</li>
+                        <li>Messages Generated: ${result.orchestrator_stats.messages_count || 0}</li>
+                        <li>Pheromind Signals: ${result.orchestrator_stats.pheromind_signals || 0}</li>
+                    </ul>
+                `;
+                stats.innerHTML = `<div class="transcription">${stats_html}</div>`;
+            }
+        }
+        
+        function displayError(errorMessage) {
+            const status = document.getElementById('status');
+            status.innerHTML = `
+                <div class="status error">
+                    ❌ Error: ${errorMessage}
+                </div>
+            `;
+            
+            // Clear other sections
+            ['transcription', 'response', 'audioResponse', 'stats'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+        }
+    </script>
+</body>
+</html>

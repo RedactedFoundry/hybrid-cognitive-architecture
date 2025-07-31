@@ -5,6 +5,7 @@ Provides OpenAI-compatible API interface to Ollama models
 
 import asyncio
 import aiohttp
+import importlib.util
 import json
 import logging
 from typing import Optional, Dict, Any, AsyncGenerator
@@ -27,16 +28,30 @@ class LLMResponse:
 class OllamaClient:
     """Client for Ollama using OpenAI-compatible API"""
     
-    def __init__(self, base_url: str = "http://localhost:11434"):
+    def __init__(self, base_url: Optional[str] = None):
+        # Import configuration
+        import sys
+        import os
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(project_root, 'config.py')
+        spec = importlib.util.spec_from_file_location("config", config_path)
+        config_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(config_module)
+        Config = config_module.Config
+        
+        # Use provided URL or get from configuration
+        if base_url is None:
+            config = Config()
+            base_url = f"http://{config.ollama_host}:{config.ollama_port}"
+        
         self.base_url = base_url.rstrip('/')
         self.session = None
         
+        # Import centralized model configuration
+        from config.models import CouncilModels
+        
         # Model alias mapping from council names to actual Ollama model names
-        self.model_mapping = {
-            "qwen3-council": "hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M",
-            "deepseek-council": "deepseek-coder:6.7b-instruct", 
-            "mistral-council": "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"
-        }
+        self.model_mapping = CouncilModels.MODEL_MAPPING
         
     async def _get_session(self):
         """Get or create HTTP session"""

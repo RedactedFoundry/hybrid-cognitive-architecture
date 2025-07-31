@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hybrid AI Council - Test Client</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 Hybrid AI Council</h1>
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">
+            Experience true multi-agent deliberation with token-by-token streaming • Three phases of AI reasoning
+        </p>
+        
+        <div style="text-align: center; margin-bottom: 30px;">
+            <a href="/static/index.html" style="display: inline-block; padding: 8px 16px; margin: 0 10px; background: #2980b9; color: white; text-decoration: none; border-radius: 6px;">💬 Text Chat</a>
+            <a href="/static/realtime-voice.html" style="display: inline-block; padding: 8px 16px; margin: 0 10px; background: #e74c3c; color: white; text-decoration: none; border-radius: 6px;">🎤 Real-Time Voice</a>
+            <a href="/static/voice-test.html" style="display: inline-block; padding: 8px 16px; margin: 0 10px; background: #27ae60; color: white; text-decoration: none; border-radius: 6px;">📁 Voice Upload</a>
+        </div>
+        
+        <div class="phase-badges">
+            <div class="phase-badge" id="phase-1">Phase 1: Concurrent Analysis</div>
+            <div class="phase-badge" id="phase-2">Phase 2: Cross-Critique</div>
+            <div class="phase-badge" id="phase-3">Phase 3: Final Synthesis</div>
+        </div>
+        
+        <div class="connection-status" id="statusContainer">
+            <span id="status">🔌 Connecting to AI Council...</span>
+            <span style="margin-left: 15px; font-size: 0.8em;">
+                Connection ID: <span id="connectionId">-</span>
+            </span>
+        </div>
+        
+        <div id="messages"></div>
+        
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Ask the AI Council anything..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="sendButton">Send Message</button>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; font-size: 0.8em; color: var(--text-secondary);">
+            <p>💡 Try asking: "How does quantum computing work?" or "What's the future of AI?"</p>
+        </div>
+    </div>
+
+    <script src="/static/js/client.js"></script>
+</body>
+</html>

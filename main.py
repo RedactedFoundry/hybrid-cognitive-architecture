@@ -20,13 +20,15 @@ Usage:
 
 import asyncio
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, File, UploadFile, Form
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import structlog
@@ -34,6 +36,9 @@ import structlog
 # Import our core orchestrator
 from core.orchestrator import UserFacingOrchestrator, ProcessingPhase
 from core.logging_config import setup_logging
+
+# Import voice foundation
+from voice_foundation.orchestrator_integration import voice_orchestrator
 
 # Import clients for health checks
 from clients.ollama_client import get_ollama_client
@@ -46,6 +51,17 @@ class ChatMessage(BaseModel):
     """WebSocket chat message from client."""
     message: str = Field(description="User's message content")
     conversation_id: Optional[str] = Field(default=None, description="Conversation ID for context")
+
+class VoiceChatResponse(BaseModel):
+    """Response model for voice chat endpoint."""
+    success: bool = Field(description="Whether the voice processing was successful")
+    request_id: str = Field(description="Unique identifier for this request")
+    transcription: Optional[str] = Field(default=None, description="Transcribed text from audio input")
+    response_text: Optional[str] = Field(default=None, description="AI response text")
+    audio_url: Optional[str] = Field(default=None, description="URL to download response audio")
+    processing_time: float = Field(description="Total processing time in seconds")
+    error: Optional[str] = Field(default=None, description="Error message if processing failed")
+    orchestrator_stats: Optional[Dict[str, Any]] = Field(default=None, description="Statistics from cognitive processing")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
@@ -59,6 +75,20 @@ class ChatResponse(BaseModel):
     confidence: Optional[float] = Field(default=None, description="Confidence score for final responses")
     processing_time: Optional[float] = Field(default=None, description="Total processing time")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional response metadata")
+
+
+class SimpleChatRequest(BaseModel):
+    """Request model for simple chat testing."""
+    message: str = Field(description="User message")
+    conversation_id: Optional[str] = Field(default="test", description="Conversation ID")
+
+
+class SimpleChatResponse(BaseModel):
+    """Response model for simple chat testing."""
+    response: str = Field(description="AI response")
+    intent: Optional[str] = Field(default=None, description="Detected intent from Smart Router")
+    processing_time: float = Field(description="Processing time in seconds")
+    path_taken: str = Field(description="Which cognitive path was used")
 
 
 class HealthStatus(BaseModel):
@@ -91,10 +121,19 @@ async def lifespan(app: FastAPI):
     orchestrator = UserFacingOrchestrator()
     logger.info("UserFacingOrchestrator initialized successfully")
     
+    # Initialize voice foundation
+    try:
+        await voice_orchestrator.initialize()
+        logger.info("Voice Foundation initialized successfully")
+    except Exception as e:
+        logger.warning("Voice Foundation initialization failed - voice endpoints may not work", error=str(e))
+    
     # Verify core services
     await _verify_services_startup()
     
-    logger.info("Hybrid AI Council API server started successfully", port=8000)
+    logger.info("Hybrid AI Council API server started successfully", 
+                port=8000, 
+                endpoints=["WebSocket Chat (/ws/chat)", "Voice Chat (/api/voice/chat)", "Health Check (/health)"])
     
     yield
     
@@ -130,6 +169,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 async def _verify_services_startup():
@@ -272,6 +314,370 @@ async def health_check():
     return HealthStatus(**health_status)
 
 
+# Simple Chat Endpoint for Smart Router Testing
+
+@app.post("/api/chat", response_model=SimpleChatResponse)
+async def simple_chat(request: SimpleChatRequest):
+    """
+    Simple REST chat endpoint for testing the Smart Router.
+    
+    This endpoint processes text messages through the full cognitive architecture
+    and returns the response with Smart Router metadata for debugging.
+    """
+    start_time = datetime.now(timezone.utc)
+    
+    try:
+        # Process through the Smart Router orchestrator
+        orchestrator_result = await orchestrator.process_request(
+            user_input=request.message,
+            conversation_id=request.conversation_id
+        )
+        
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+        
+        # Determine which path was taken based on metadata and phase
+        path_taken = "unknown"
+        intent = None
+        
+        if hasattr(orchestrator_result, 'routing_intent') and orchestrator_result.routing_intent:
+            intent = orchestrator_result.routing_intent.value
+            
+            if orchestrator_result.routing_intent.value == "simple_query_task":
+                path_taken = "fast_response"
+            elif orchestrator_result.routing_intent.value == "complex_reasoning_task":
+                path_taken = "council_deliberation" 
+            elif orchestrator_result.routing_intent.value == "exploratory_task":
+                path_taken = "pheromind_scan"
+            elif orchestrator_result.routing_intent.value == "action_task":
+                path_taken = "kip_execution"
+        
+        # Check metadata for additional clues
+        if hasattr(orchestrator_result, 'metadata') and orchestrator_result.metadata:
+            if orchestrator_result.metadata.get("fast_path_used"):
+                path_taken = "fast_response"
+        
+        return SimpleChatResponse(
+            response=orchestrator_result.final_response or "No response generated",
+            intent=intent,
+            processing_time=processing_time,
+            path_taken=path_taken
+        )
+        
+    except Exception as e:
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+        logger.error("Simple chat error", error=str(e), exc_info=True)
+        
+        return SimpleChatResponse(
+            response=f"Error processing request: {str(e)}",
+            intent=None,
+            processing_time=processing_time,
+            path_taken="error"
+        )
+
+
+# Voice Foundation Endpoints
+
+@app.post("/api/voice/chat", response_model=VoiceChatResponse)
+async def voice_chat(
+    audio: UploadFile = File(..., description="Audio file (WAV format recommended)"),
+    conversation_id: Optional[str] = Form(None, description="Conversation ID for context"),
+    user_id: Optional[str] = Form("voice_user", description="User identifier")
+):
+    """
+    Voice-to-voice chat endpoint.
+    
+    Upload an audio file and receive an AI response as both text and audio.
+    This endpoint processes the audio through the full 3-layer cognitive architecture.
+    """
+    request_id = str(uuid.uuid4())
+    logger.info("Voice chat request received", request_id=request_id, filename=audio.filename)
+    
+    try:
+        # Validate file type
+        if not audio.filename.lower().endswith(('.wav', '.mp3', '.m4a', '.ogg')):
+            raise HTTPException(status_code=400, detail="Audio file must be WAV, MP3, M4A, or OGG format")
+        
+        # Create unique filename for this request
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_audio:
+            # Save uploaded audio
+            content = await audio.read()
+            temp_audio.write(content)
+            temp_audio_path = temp_audio.name
+        
+        # Create output path
+        output_dir = "voice_foundation/outputs"
+        os.makedirs(output_dir, exist_ok=True)
+        output_audio_path = f"{output_dir}/{request_id}_response.wav"
+        
+        # Process through voice foundation
+        result = await voice_orchestrator.process_voice_request(
+            audio_input_path=temp_audio_path,
+            audio_output_path=output_audio_path,
+            user_id=user_id,
+            conversation_id=conversation_id
+        )
+        
+        # Clean up temp file
+        os.unlink(temp_audio_path)
+        
+        if result["success"]:
+            # Create public URL for audio response
+            audio_url = f"/api/voice/audio/{request_id}_response.wav"
+            
+            response = VoiceChatResponse(
+                success=True,
+                request_id=result["request_id"],
+                transcription=result["transcription"],
+                response_text=result["response_text"],
+                audio_url=audio_url,
+                processing_time=result["processing_time"],
+                orchestrator_stats=result.get("orchestrator_state", {}),
+                metadata={
+                    "conversation_id": conversation_id,
+                    "user_id": user_id,
+                    "audio_format": audio.filename.split('.')[-1].lower()
+                }
+            )
+            
+            logger.info("Voice chat completed successfully", 
+                       request_id=request_id, 
+                       processing_time=result["processing_time"],
+                       response_length=len(result["response_text"]))
+            
+            return response
+        else:
+            logger.error("Voice chat processing failed", 
+                        request_id=request_id, 
+                        error=result.get("error"))
+            
+            return VoiceChatResponse(
+                success=False,
+                request_id=result["request_id"],
+                transcription=result.get("transcription"),
+                processing_time=result["processing_time"],
+                error=result.get("error"),
+                metadata={
+                    "conversation_id": conversation_id,
+                    "user_id": user_id
+                }
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Voice chat endpoint error", request_id=request_id, error=str(e), exc_info=True)
+        return VoiceChatResponse(
+            success=False,
+            request_id=request_id,
+            processing_time=0.0,
+            error=f"Internal server error: {str(e)}",
+            metadata={"conversation_id": conversation_id, "user_id": user_id}
+        )
+
+
+@app.post("/api/voice/test")
+async def voice_test():
+    """Quick test endpoint to verify voice API is working."""
+    return {"status": "Voice API is working", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/api/voice/audio/{filename}")
+async def get_voice_audio(filename: str):
+    """
+    Download generated voice response audio files.
+    
+    This endpoint serves the audio files generated by the voice chat endpoint.
+    """
+    try:
+        file_path = f"voice_foundation/outputs/{filename}"
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Audio file not found")
+        
+        return FileResponse(
+            path=file_path,
+            media_type="audio/wav",
+            filename=filename,
+            headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
+        )
+        
+    except Exception as e:
+        logger.error("Error serving voice audio", filename=filename, error=str(e))
+        raise HTTPException(status_code=500, detail="Error serving audio file")
+
+
+@app.websocket("/ws/voice")
+async def websocket_voice_endpoint(websocket: WebSocket):
+    """
+    Real-time WebSocket endpoint for voice conversation.
+    
+    This endpoint handles real-time voice chat with the AI Council,
+    providing natural conversation flow with interruption handling.
+    """
+    await websocket.accept()
+    connection_id = str(uuid.uuid4())
+    conversation_id = f"voice_{connection_id}"
+    
+    logger.info("Real-time voice connection established", 
+                connection_id=connection_id, 
+                conversation_id=conversation_id)
+    
+    try:
+        # Send initial connection confirmation
+        await websocket.send_json({
+            "type": "connection_established",
+            "connection_id": connection_id,
+            "message": "Real-time voice chat ready"
+        })
+        
+        while True:
+            try:
+                # Receive message from client
+                data = await websocket.receive_json()
+                
+                if data["type"] == "voice_input":
+                    await handle_voice_input(websocket, data, conversation_id)
+                elif data["type"] == "interrupt":
+                    await handle_conversation_interrupt(websocket, conversation_id)
+                else:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Unknown message type: {data['type']}"
+                    })
+                    
+            except Exception as e:
+                logger.error("Error processing voice message", 
+                           connection_id=connection_id, 
+                           error=str(e), 
+                           exc_info=True)
+                
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"Processing error: {str(e)}"
+                })
+                
+    except WebSocketDisconnect:
+        logger.info("Real-time voice connection closed", connection_id=connection_id)
+    except Exception as e:
+        logger.error("Voice WebSocket error", connection_id=connection_id, error=str(e))
+        
+        
+async def handle_voice_input(websocket: WebSocket, data: dict, conversation_id: str):
+    """Handle incoming voice input and process through AI Council."""
+    import base64
+    import tempfile
+    import os
+    
+    try:
+        # Send processing update
+        await websocket.send_json({
+            "type": "processing_update",
+            "message": "Processing your voice..."
+        })
+        
+        # Decode audio data
+        audio_data = base64.b64decode(data["audio_data"])
+        
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as temp_file:
+            temp_file.write(audio_data)
+            temp_audio_path = temp_file.name
+        
+        # Convert WebM to WAV if needed (simplified for now)
+        # Note: In production, you'd want proper audio format conversion
+        wav_path = temp_audio_path.replace('.webm', '.wav')
+        
+        # For now, assume the audio works directly (mock conversion)
+        # In production: use ffmpeg or similar for format conversion
+        os.rename(temp_audio_path, wav_path)
+        
+        # Process through voice foundation (STT)
+        transcription = await voice_orchestrator.voice_foundation.process_audio_to_text(wav_path)
+        
+        if transcription:
+            # Send transcription to client
+            await websocket.send_json({
+                "type": "transcription",
+                "text": transcription
+            })
+            
+            # Send processing update
+            await websocket.send_json({
+                "type": "processing_update", 
+                "message": "AI Council deliberating..."
+            })
+            
+            # Process through orchestrator
+            orchestrator_result = await voice_orchestrator.orchestrator.process_request(
+                user_input=transcription,
+                conversation_id=conversation_id
+            )
+            
+            if orchestrator_result and orchestrator_result.final_response:
+                # Generate audio response
+                response_audio_path = f"voice_foundation/outputs/realtime_{uuid.uuid4()}.wav"
+                os.makedirs("voice_foundation/outputs", exist_ok=True)
+                
+                tts_success = await voice_orchestrator.voice_foundation.process_text_to_audio(
+                    orchestrator_result.final_response,
+                    response_audio_path
+                )
+                
+                if tts_success:
+                    # Send response with audio URL
+                    audio_url = f"/api/voice/audio/{os.path.basename(response_audio_path)}"
+                    
+                    await websocket.send_json({
+                        "type": "ai_response",
+                        "text": orchestrator_result.final_response,
+                        "audio_url": audio_url,
+                        "processing_stats": {
+                            "phase": orchestrator_result.current_phase.value if hasattr(orchestrator_result, 'current_phase') else 'completed',
+                            "messages": len(orchestrator_result.messages) if hasattr(orchestrator_result, 'messages') else 0
+                        }
+                    })
+                else:
+                    await websocket.send_json({
+                        "type": "ai_response",
+                        "text": orchestrator_result.final_response,
+                        "audio_url": None
+                    })
+            else:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "AI processing failed - please try again"
+                })
+        else:
+            await websocket.send_json({
+                "type": "error",
+                "message": "Could not understand audio - please try again"
+            })
+        
+        # Clean up temporary file
+        if os.path.exists(wav_path):
+            os.unlink(wav_path)
+            
+    except Exception as e:
+        logger.error("Voice input processing error", error=str(e), exc_info=True)
+        await websocket.send_json({
+            "type": "error",
+            "message": f"Voice processing error: {str(e)}"
+        })
+
+
+async def handle_conversation_interrupt(websocket: WebSocket, conversation_id: str):
+    """Handle conversation interruption (when user starts talking while AI is responding)."""
+    logger.info("Conversation interrupted", conversation_id=conversation_id)
+    
+    # TODO: Implement AI response interruption logic
+    # For now, just acknowledge the interruption
+    await websocket.send_json({
+        "type": "interrupt_acknowledged",
+        "message": "AI response interrupted - ready for new input"
+    })
+
+
 @app.websocket("/ws/chat")
 async def websocket_chat_endpoint(websocket: WebSocket):
     """
@@ -311,22 +717,30 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 message_data = json.loads(data)
                 chat_message = ChatMessage(**message_data)
             except json.JSONDecodeError as e:
-                error_response = ChatResponse(
-                    type="error",
-                    content=f"Invalid JSON format: {str(e)}",
-                    request_id="error_" + str(uuid.uuid4()),
-                    conversation_id="error"
-                )
-                await websocket.send_text(error_response.model_dump_json())
+                try:
+                    error_response = ChatResponse(
+                        type="error",
+                        content=f"Invalid JSON format: {str(e)}",
+                        request_id="error_" + str(uuid.uuid4()),
+                        conversation_id="error"
+                    )
+                    await websocket.send_text(error_response.model_dump_json())
+                except Exception:
+                    # WebSocket likely closed, just continue
+                    pass
                 continue
             except Exception as e:
-                error_response = ChatResponse(
-                    type="error",
-                    content=f"Message format error: {str(e)}",
-                    request_id="error_" + str(uuid.uuid4()),
-                    conversation_id="error"
-                )
-                await websocket.send_text(error_response.model_dump_json())
+                try:
+                    error_response = ChatResponse(
+                        type="error",
+                        content=f"Message format error: {str(e)}",
+                        request_id="error_" + str(uuid.uuid4()),
+                        conversation_id="error"
+                    )
+                    await websocket.send_text(error_response.model_dump_json())
+                except Exception:
+                    # WebSocket likely closed, just continue  
+                    pass
                 continue
             
             # Generate request ID and conversation ID
@@ -341,24 +755,50 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 message_preview=chat_message.message[:100]
             )
             
-            # Send acknowledgment
-            ack_response = ChatResponse(
-                type="status",
-                content="Message received. Starting AI Council deliberation...",
-                request_id=request_id,
-                conversation_id=conversation_id,
-                phase="received"
-            )
-            await websocket.send_text(ack_response.model_dump_json())
+            # Send acknowledgment (if websocket still connected)
+            try:
+                ack_response = ChatResponse(
+                    type="status",
+                    content="Message received. Starting AI Council deliberation...",
+                    request_id=request_id,
+                    conversation_id=conversation_id,
+                    phase="received"
+                )
+                await websocket.send_text(ack_response.model_dump_json())
+            except Exception:
+                # WebSocket disconnected before ack, continue processing anyway
+                logger.debug("Could not send acknowledgment, WebSocket likely closed", connection_id=connection_id)
             
             try:
-                # Process through orchestrator with real-time streaming
-                await _process_with_streaming(
-                    websocket=websocket,
+                # Process through Smart Router orchestrator
+                process_start_time = datetime.now(timezone.utc)
+                orchestrator_result = await orchestrator.process_request(
                     user_input=chat_message.message,
-                    request_id=request_id,
                     conversation_id=conversation_id
                 )
+                
+                # Send the Smart Router result
+                processing_time = (datetime.now(timezone.utc) - process_start_time).total_seconds()
+                
+                try:
+                    final_response = ChatResponse(
+                        type="final",
+                        content=orchestrator_result.final_response or "No response generated",
+                        request_id=request_id,
+                        conversation_id=conversation_id,
+                        phase="completed",
+                        processing_time=processing_time,
+                        metadata={
+                            "intent": orchestrator_result.routing_intent.value if orchestrator_result.routing_intent else None,
+                            "smart_router_used": True
+                        }
+                    )
+                    await websocket.send_text(final_response.model_dump_json())
+                except Exception as send_error:
+                    # WebSocket closed before we could send final response
+                    logger.debug("Could not send final response, WebSocket likely closed", 
+                               connection_id=connection_id, 
+                               send_error=str(send_error))
                 
             except Exception as e:
                 logger.error(
@@ -369,14 +809,22 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                     exc_info=True
                 )
                 
-                error_response = ChatResponse(
-                    type="error",
-                    content=f"I apologize, but I encountered an error processing your request: {str(e)}",
-                    request_id=request_id,
-                    conversation_id=conversation_id,
-                    phase="error"
-                )
-                await websocket.send_text(error_response.model_dump_json())
+                # Only send error response if websocket is still connected
+                # (don't try to send through a disconnected websocket)
+                try:
+                    error_response = ChatResponse(
+                        type="error",
+                        content=f"I apologize, but I encountered an error processing your request: {str(e)}",
+                        request_id=request_id,
+                        conversation_id=conversation_id,
+                        phase="error"
+                    )
+                    await websocket.send_text(error_response.model_dump_json())
+                except Exception as send_error:
+                    # WebSocket already closed or other send error
+                    logger.debug("Could not send error response, WebSocket likely closed", 
+                               connection_id=connection_id, 
+                               send_error=str(send_error))
     
     except WebSocketDisconnect:
         logger.info("WebSocket connection closed by client", connection_id=connection_id)
@@ -533,462 +981,62 @@ async def _process_with_streaming(
         raise
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
 async def get_test_client():
     """
-    Simple HTML test client for WebSocket testing.
-    
-    This provides a basic web interface for testing the WebSocket chat functionality
-    during development.
+    Redirect to static HTML client for testing WebSocket functionality.
     """
-    html_content = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Hybrid AI Council - Test Client</title>
-        <style>
-            :root {
-                --bg-primary: #1a1a1a;
-                --bg-secondary: #2d2d2d;
-                --bg-tertiary: #3a3a3a;
-                --text-primary: #e0e0e0;
-                --text-secondary: #b0b0b0;
-                --border-color: #404040;
-                --accent-blue: #4a9eff;
-                --accent-green: #4caf50;
-                --accent-red: #f44336;
-                --accent-purple: #9c27b0;
-                --accent-orange: #ff9800;
-                --shadow: rgba(0, 0, 0, 0.3);
-            }
-            
-            body { 
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                max-width: 1000px; 
-                margin: 0 auto; 
-                padding: 20px;
-                background-color: var(--bg-primary);
-                color: var(--text-primary);
-                line-height: 1.5;
-            }
-            .container {
-                background: var(--bg-secondary);
-                padding: 30px;
-                border-radius: 12px;
-                box-shadow: 0 4px 20px var(--shadow);
-                border: 1px solid var(--border-color);
-            }
-            h1 {
-                text-align: center;
-                color: var(--accent-blue);
-                margin-bottom: 30px;
-                font-size: 2.2em;
-                font-weight: 300;
-            }
-            .phase-indicator {
-                text-align: center;
-                margin-bottom: 20px;
-                padding: 10px;
-                background: var(--bg-tertiary);
-                border-radius: 8px;
-                border: 1px solid var(--border-color);
-                font-weight: 500;
-            }
-            #messages {
-                height: 500px;
-                border: 1px solid var(--border-color);
-                padding: 15px;
-                overflow-y: auto;
-                background-color: var(--bg-primary);
-                margin-bottom: 15px;
-                border-radius: 8px;
-                scrollbar-width: thin;
-                scrollbar-color: var(--border-color) var(--bg-primary);
-            }
-            #messages::-webkit-scrollbar {
-                width: 8px;
-            }
-            #messages::-webkit-scrollbar-track {
-                background: var(--bg-primary);
-            }
-            #messages::-webkit-scrollbar-thumb {
-                background: var(--border-color);
-                border-radius: 4px;
-            }
-            .message {
-                margin: 8px 0;
-                padding: 12px;
-                border-radius: 8px;
-                border-left: 4px solid transparent;
-                transition: all 0.2s ease;
-            }
-            .message:hover {
-                transform: translateX(4px);
-            }
-            .status { 
-                background-color: rgba(74, 158, 255, 0.15); 
-                border-left-color: var(--accent-blue);
-                color: var(--text-primary);
-            }
-            .final { 
-                background-color: rgba(76, 175, 80, 0.15); 
-                border-left-color: var(--accent-green);
-                color: var(--text-primary);
-            }
-            .error { 
-                background-color: rgba(244, 67, 54, 0.15); 
-                border-left-color: var(--accent-red);
-                color: var(--text-primary);
-            }
-            .user { 
-                background-color: rgba(156, 39, 176, 0.15); 
-                border-left-color: var(--accent-purple);
-                color: var(--text-primary);
-            }
-            .streaming { 
-                background-color: rgba(255, 152, 0, 0.15); 
-                border-left-color: var(--accent-orange);
-                color: var(--text-primary);
-                position: relative;
-            }
-            .streaming::after {
-                content: '▌';
-                animation: blink 1s infinite;
-                color: var(--accent-orange);
-                font-weight: bold;
-                margin-left: 4px;
-            }
-            @keyframes blink {
-                0%, 50% { opacity: 1; }
-                51%, 100% { opacity: 0.3; }
-            }
-            .input-container {
-                display: flex;
-                gap: 10px;
-                align-items: center;
-            }
-            input[type="text"] {
-                flex: 1;
-                padding: 12px;
-                border: 1px solid var(--border-color);
-                border-radius: 6px;
-                background: var(--bg-tertiary);
-                color: var(--text-primary);
-                font-size: 14px;
-                transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            }
-            input[type="text"]:focus {
-                outline: none;
-                border-color: var(--accent-blue);
-                box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
-            }
-            input[type="text"]::placeholder {
-                color: var(--text-secondary);
-            }
-            button {
-                padding: 12px 24px;
-                background-color: var(--accent-blue);
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.3s ease;
-                white-space: nowrap;
-            }
-            button:hover {
-                background-color: #357abd;
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
-            }
-            button:disabled {
-                background-color: #555;
-                cursor: not-allowed;
-                transform: none;
-                box-shadow: none;
-            }
-            .metadata {
-                font-size: 0.85em;
-                color: var(--text-secondary);
-                margin-top: 8px;
-                font-family: 'Consolas', 'Monaco', monospace;
-            }
-            .connection-status {
-                text-align: center;
-                margin-bottom: 20px;
-                padding: 10px;
-                background: var(--bg-tertiary);
-                border-radius: 6px;
-                border: 1px solid var(--border-color);
-                font-size: 0.9em;
-            }
-            .phase-badges {
-                display: flex;
-                justify-content: center;
-                gap: 10px;
-                margin-bottom: 20px;
-                flex-wrap: wrap;
-            }
-            .phase-badge {
-                padding: 6px 12px;
-                background: var(--bg-tertiary);
-                border: 1px solid var(--border-color);
-                border-radius: 20px;
-                font-size: 0.8em;
-                color: var(--text-secondary);
-            }
-            .phase-badge.active {
-                background: var(--accent-blue);
-                color: white;
-                border-color: var(--accent-blue);
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🧠 Hybrid AI Council</h1>
-            <p style="text-align: center; color: var(--text-secondary); margin-bottom: 30px;">
-                Experience true multi-agent deliberation with token-by-token streaming • Three phases of AI reasoning
-            </p>
-            
-            <div class="phase-badges">
-                <div class="phase-badge" id="phase-1">Phase 1: Concurrent Analysis</div>
-                <div class="phase-badge" id="phase-2">Phase 2: Cross-Critique</div>
-                <div class="phase-badge" id="phase-3">Phase 3: Final Synthesis</div>
-            </div>
-            
-            <div class="connection-status" id="statusContainer">
-                <span id="status">🔌 Connecting to AI Council...</span>
-                <span style="margin-left: 15px; font-size: 0.8em;">
-                    Connection ID: <span id="connectionId">-</span>
-                </span>
-            </div>
-            
-            <div id="messages"></div>
-            
-            <div class="input-container">
-                <input type="text" id="messageInput" placeholder="Ask the AI Council anything..." onkeypress="handleKeyPress(event)">
-                <button onclick="sendMessage()" id="sendButton">Send Message</button>
-            </div>
-            
-            <div style="text-align: center; margin-top: 20px; font-size: 0.8em; color: var(--text-secondary);">
-                <p>💡 Try asking: "How does quantum computing work?" or "What's the future of AI?"</p>
-            </div>
-        </div>
-
-        <script>
-            let ws = null;
-            let connectionId = null;
-
-            function connect() {
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
-                
-                ws = new WebSocket(wsUrl);
-                
-                ws.onopen = function(event) {
-                    document.getElementById('status').innerHTML = '🟢 Connected to AI Council';
-                    document.getElementById('statusContainer').style.borderColor = 'var(--accent-green)';
-                    resetPhases();
-                };
-                
-                ws.onmessage = function(event) {
-                    const response = JSON.parse(event.data);
-                    displayMessage(response);
-                };
-                
-                ws.onclose = function(event) {
-                    document.getElementById('status').innerHTML = '🔴 Disconnected';
-                    document.getElementById('statusContainer').style.borderColor = 'var(--accent-red)';
-                    setTimeout(connect, 3000); // Reconnect after 3 seconds
-                };
-                
-                ws.onerror = function(error) {
-                    console.error('WebSocket error:', error);
-                    document.getElementById('status').innerHTML = '❌ Connection Error';
-                    document.getElementById('statusContainer').style.borderColor = 'var(--accent-red)';
-                };
-            }
-
-            let currentStreamingMessage = null;
-            let streamingContent = '';
-            let currentPhase = 0;
-
-            function resetPhases() {
-                currentPhase = 0;
-                const phases = ['phase-1', 'phase-2', 'phase-3'];
-                phases.forEach(id => {
-                    document.getElementById(id).classList.remove('active');
-                });
-            }
-
-            function activatePhase(phaseNum) {
-                if (phaseNum > currentPhase) {
-                    currentPhase = phaseNum;
-                    const phaseId = `phase-${phaseNum}`;
-                    document.getElementById(phaseId).classList.add('active');
-                }
-            }
-
-            function updatePhaseFromContent(content) {
-                if (content.includes('Phase 1') || content.includes('concurrent') || content.includes('analyzing concurrently')) {
-                    activatePhase(1);
-                } else if (content.includes('Phase 2') || content.includes('critique') || content.includes('critiquing')) {
-                    activatePhase(2);
-                } else if (content.includes('Phase 3') || content.includes('synthesis') || content.includes('synthesizing')) {
-                    activatePhase(3);
-                }
-            }
-
-            function displayMessage(response) {
-                const messagesDiv = document.getElementById('messages');
-                
-                if (response.type === 'partial') {
-                    // Handle streaming tokens
-                    if (!currentStreamingMessage) {
-                        // Create new streaming message container
-                        currentStreamingMessage = document.createElement('div');
-                        currentStreamingMessage.className = 'message streaming';
-                        currentStreamingMessage.innerHTML = `<strong>AI COUNCIL:</strong> <span class="streaming-content"></span>`;
-                        messagesDiv.appendChild(currentStreamingMessage);
-                        streamingContent = '';
-                    }
-                    
-                    // Append token to streaming content
-                    streamingContent += response.content;
-                    const contentSpan = currentStreamingMessage.querySelector('.streaming-content');
-                    contentSpan.textContent = streamingContent;
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                    
-                } else if (response.type === 'final') {
-                    // Complete the streaming message
-                    if (currentStreamingMessage) {
-                        currentStreamingMessage.className = 'message final';
-                        const contentSpan = currentStreamingMessage.querySelector('.streaming-content');
-                        contentSpan.textContent = response.content;
-                        
-                        // Add metadata
-                        if (response.metadata && Object.keys(response.metadata).length > 0) {
-                            const metadataDiv = document.createElement('div');
-                            metadataDiv.className = 'metadata';
-                            metadataDiv.innerHTML = `Time: ${response.processing_time.toFixed(1)}s | ` + 
-                                                   `Agents: ${response.metadata.agents_participated ? response.metadata.agents_participated.join(', ') : 'unknown'}`;
-                            currentStreamingMessage.appendChild(metadataDiv);
-                        }
-                        
-                        currentStreamingMessage = null;
-                        streamingContent = '';
-                    } else {
-                        // Fallback for non-streaming final response
-                        const messageDiv = document.createElement('div');
-                        messageDiv.className = 'message final';
-                        messageDiv.innerHTML = `<strong>FINAL:</strong> ${response.content}`;
-                        messagesDiv.appendChild(messageDiv);
-                    }
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                    
-                } else {
-                    // Handle status, error, and other message types
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = `message ${response.type}`;
-                    
-                    // Update phase indicators for status messages
-                    if (response.type === 'status') {
-                        updatePhaseFromContent(response.content);
-                    }
-                    
-                    let content = `<strong>${response.type.toUpperCase()}:</strong> ${response.content}`;
-                    
-                    if (response.phase && response.type === 'status') {
-                        content += `<div class="metadata">Phase: ${response.phase}`;
-                        if (response.processing_time) {
-                            content += ` | Time: ${response.processing_time.toFixed(1)}s`;
-                        }
-                        if (response.metadata && response.metadata.agent) {
-                            content += ` | Agent: ${response.metadata.agent}`;
-                        }
-                        content += `</div>`;
-                    }
-                    
-                    messageDiv.innerHTML = content;
-                    messagesDiv.appendChild(messageDiv);
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                }
-                
-                // Store connection info
-                if (response.type === 'status' && response.request_id.startsWith('connection_')) {
-                    connectionId = response.request_id.replace('connection_', '');
-                    document.getElementById('connectionId').textContent = connectionId.substring(0, 8) + '...';
-                }
-            }
-
-            function sendMessage() {
-                const input = document.getElementById('messageInput');
-                const message = input.value.trim();
-                
-                if (!message || !ws || ws.readyState !== WebSocket.OPEN) {
-                    return;
-                }
-                
-                // Reset phases for new deliberation
-                resetPhases();
-                
-                // Display user message
-                const messagesDiv = document.getElementById('messages');
-                const userDiv = document.createElement('div');
-                userDiv.className = 'message user';
-                userDiv.innerHTML = `<strong>YOU:</strong> ${message}`;
-                messagesDiv.appendChild(userDiv);
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                
-                // Send to server
-                ws.send(JSON.stringify({
-                    message: message,
-                    conversation_id: connectionId || 'test_conversation'
-                }));
-                
-                input.value = '';
-                
-                // Disable send button temporarily
-                const sendButton = document.getElementById('sendButton');
-                sendButton.disabled = true;
-                sendButton.textContent = 'Processing...';
-                
-                setTimeout(() => {
-                    sendButton.disabled = false;
-                    sendButton.textContent = 'Send Message';
-                }, 3000);
-            }
-
-            function handleKeyPress(event) {
-                if (event.key === 'Enter') {
-                    sendMessage();
-                }
-            }
-
-            // Connect on page load
-            connect();
-        </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
+    return RedirectResponse(url="/static/index.html")
 
 
 if __name__ == "__main__":
     import uvicorn
+    import sys
+    
+    # Import Config from the root config module
+    try:
+        import os
+        import importlib.util
+        # Get path to root config.py
+        current_dir = os.path.dirname(__file__)
+        config_path = os.path.join(current_dir, 'config.py')
+        
+        spec = importlib.util.spec_from_file_location("config_module", config_path)
+        config_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(config_module)
+        Config = config_module.Config
+    except ImportError:
+        # Fallback for testing
+        class Config:
+            def __init__(self, **kwargs):
+                for k, v in kwargs.items():
+                    setattr(self, k, v)
+    
+    # Load configuration
+    config = Config()
+    
+    # Determine base URL for cloud compatibility
+    if config.environment in ["production", "prod", "staging"]:
+        # In production, use environment-specific URLs
+        base_url = os.getenv("PUBLIC_URL", f"http://{config.api_host}:{config.api_port}")
+        ws_url = base_url.replace("http://", "ws://").replace("https://", "wss://")
+    else:
+        # Development - use localhost
+        base_url = f"http://localhost:{config.api_port}"
+        ws_url = f"ws://localhost:{config.api_port}"
     
     print("🚀 Starting Hybrid AI Council API server...")
-    print("📊 Health check: http://localhost:8000/health")
-    print("🧠 WebSocket chat: ws://localhost:8000/ws/chat")
-    print("🌐 Test client: http://localhost:8000/")
-    print("📖 API docs: http://localhost:8000/docs")
+    print(f"📊 Health check: {base_url}/health")
+    print(f"🧠 WebSocket chat: {ws_url}/ws/chat")
+    print(f"🌐 Test client: {base_url}/")
+    print(f"📖 API docs: {base_url}/docs")
+    print(f"🔧 Environment: {config.environment}")
     
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
+        host=config.api_host,
+        port=config.api_port,
+        reload=(config.environment == "development"),
+        log_level=config.log_level.lower()
+    )
     )

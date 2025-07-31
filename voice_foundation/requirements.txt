@@ -1,0 +1,18 @@
+# Voice Foundation Requirements
+# Epic 12.5: Research and validation pipeline
+
+# STT: NVIDIA Parakeet TDT 0.6B V2
+nemo_toolkit[asr]>=2.2.0
+
+# TTS: Kokoro TTS 82M  
+kokoro>=0.9.4
+soundfile>=0.12.1
+
+# Audio processing
+torch>=2.0.0
+numpy>=1.24.0
+
+# Note: espeak-ng required for TTS
+# Windows: Download installer from https://github.com/espeak-ng/espeak-ng/releases
+# Linux: apt-get install espeak-ng
+# macOS: brew install espeak
