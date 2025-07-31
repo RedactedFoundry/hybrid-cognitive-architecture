@@ -1,105 +1,20 @@
-# docker-compose.yaml
-# Hybrid AI Council - Local Development Environment
-# This compose file sets up the core infrastructure services for local development:
-# - Redis: Ephemeral storage for pheromones and session data
-# - TigerVector: Graph database for persistent knowledge storage
-# - vLLM: Local GPU-accelerated language model inference
+# version: '3.8'  # Removed obsolete version attribute
 
 services:
-  # Redis Service - Ephemeral Storage
-  # Used for storing pheromones (12-second TTL) and session data
-  # Critical for the Pheromind layer's distributed cognition
   redis:
-    image: redis:7.2-alpine
-    container_name: hybrid_redis
-    restart: unless-stopped
+    image: redis:7-alpine
     ports:
       - "6379:6379"
-    # Health check to ensure Redis is responding to ping commands
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-    # Optimize Redis for our use case with reasonable memory limits
-    # Using Redis 7.2 (stable, open source) for production reliability
-    command: >
-      redis-server
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-      --save ""
-      --appendonly no
-    networks:
-      - hybrid_network
-
-  # TigerGraph Community Edition - Persistent Knowledge Graph
-  # 
-  # IMPORTANT: TigerGraph Community Edition requires special setup!
-  # Run ./scripts/setup-tigergraph.sh instead of docker-compose for TigerGraph
-  # 
-  # The Community Edition must be loaded from tigergraph-4.2.0-community-docker-image.tar.gz
-  # which is not available on Docker Hub. Use the setup script for automated deployment.
-  #
-  # After running setup-tigergraph.sh, TigerGraph will be available at:
-  # - GraphStudio UI: http://localhost:14240
-  # - REST API: http://localhost:14240/restpp
-  # - Default credentials: tigergraph/tigergraph
-  #
-  # tigervector:
-  #   image: tigergraph/community:4.2.0
-  #   container_name: hybrid_tigervector
-  #   restart: unless-stopped
-  #   ports:
-  #     - "14240:14240"  # TigerGraph GraphStudio and REST API
-  #   init: true
-  #   networks:
-  #     - hybrid_network
-
-  # vLLM Service - Local GPU-Accelerated LLM Inference
-  # Provides high-performance local model serving using NVIDIA GPU
-  # Models are cached locally to avoid re-downloading
-  vllm:
-    build:
-      context: .
-      dockerfile: ./docker/vllm/Dockerfile
-    container_name: hybrid_vllm
-    restart: unless-stopped
-    ports:
-      - "8000:8000"  # vLLM OpenAI-compatible API
     volumes:
-      # Mount local model directories directly to HuggingFace cache paths
-      - ./models/qwen3-14b-awq:/root/.cache/huggingface/hub/models--Qwen--Qwen3-14B-AWQ
-      - ./models/deepseek-coder-v2-instruct-fp8:/root/.cache/huggingface/hub/models--neuralmagic--DeepSeek-Coder-V2-Instruct-FP8
-      - ./models/mistral-7b-instruct-v0.3-awq:/root/.cache/huggingface/hub/models--solidrust--Mistral-7B-Instruct-v0.3-AWQ
-    # GPU access configuration for NVIDIA runtime
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    environment:
-      # CUDA settings for optimal GPU utilization
-      - NVIDIA_VISIBLE_DEVICES=all
-      - CUDA_VISIBLE_DEVICES=0
-    # vLLM loads faster with pre-mounted models
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 8
-      start_period: 300s  # 5 minutes for model loading (faster with mounted models)
-    networks:
-      - hybrid_network
+      - redis_data:/data
+    restart: unless-stopped
 
-# Named volumes for persistent data storage
-# TigerGraph Community Edition manages its own data persistence
-# No explicit Docker volumes needed
+  # Ollama runs natively on Windows - no Docker container needed
+  # TigerGraph Community Edition runs separately via scripts
 
-# Isolated network for service communication
+volumes:
+  redis_data:
+
 networks:
-  hybrid_network:
-    driver: bridge
-    name: hybrid_cognitive_network 
+  default:
+    name: hybrid_network 

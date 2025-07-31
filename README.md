@@ -31,7 +31,9 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 
 3. **Start other services**:
    ```bash
-   docker-compose up -d redis vllm
+   docker-compose up -d redis
+   # SGLang runs via Python scripts (not Docker)
+   python scripts/start_sglang_multi.py
    ```
 
 4. **Initialize database**:
@@ -41,7 +43,7 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 
 5. **Access services**:
    - **TigerGraph GraphStudio**: http://localhost:14240 (tigergraph/tigergraph)
-   - **vLLM API**: http://localhost:8000
+   - **SGLang Council**: http://localhost:5000-5002 (analytical/creative/coordinator)
    - **Redis**: localhost:6379
 
 ## 🏗️ Architecture
@@ -57,7 +59,7 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 - **Knowledge Graph**: TigerGraph Community Edition 4.2.0
 - **Vector Database**: TigerGraph (hybrid graph+vector)
 - **Session Storage**: Redis 7.2-alpine
-- **Local AI Models**: vLLM with RTX 4090 support
+- **Local AI Models**: SGLang with RTX 4090 support
 - **Backend**: FastAPI with WebSockets
 - **Frontend**: Streamlit dashboard
 
@@ -67,7 +69,7 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 |---------|---------|------|---------|
 | TigerGraph | Knowledge persistence | 14240 | Community Edition |
 | Redis | Ephemeral data (12s TTL) | 6379 | Docker Compose |
-| vLLM | Local AI inference | 8000 | Docker Compose |
+| SGLang Council | Local AI inference | 5000-5002 | Python Scripts |
 
 ## 🔧 Development
 
@@ -75,11 +77,12 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 
 ```bash
 # Option 1: All services
-./scripts/setup-tigergraph.sh && docker-compose up -d
+./scripts/setup-tigergraph.sh && docker-compose up -d redis && python scripts/start_sglang_multi.py
 
-# Option 2: Individual services
-docker-compose up -d redis vllm  # Start Docker services
-./scripts/setup-tigergraph.sh    # Start TigerGraph separately
+# Option 2: Individual services  
+docker-compose up -d redis                # Start Redis
+./scripts/setup-tigergraph.sh             # Start TigerGraph separately
+python scripts/start_sglang_multi.py      # Start SGLang council
 ```
 
 ### Common Tasks
@@ -91,7 +94,8 @@ python -c "from clients.redis_client import get_redis_connection; print(get_redi
 
 # View logs
 docker logs tigergraph
-docker-compose logs vllm redis
+docker-compose logs redis
+# SGLang logs appear in the terminal where you ran start_sglang_multi.py
 
 # Stop services
 docker-compose down

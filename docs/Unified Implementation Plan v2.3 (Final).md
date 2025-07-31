@@ -81,6 +81,7 @@ This is our high-level roadmap, incorporating the safer, more methodical "Local 
 * **Epic 11: KIP Layer MVP**  
   * **Story 11.1:** KIP Agent & Genome (load from TigerVector).  
   * **Story 11.2:** Treasury Class (read/write budget in TigerVector).  
+  * **Story 11.3:** Implement First Live Data Tool. The goal for this story will be to create a simple tool (e.g., one that fetches the current weather or a stock price) and integrate it into our first KIP agent.
 * **Epic 12: Chaos Engineering**  
   * **Story 12.1:** Service Failure Testing: Write scripts to test graceful degradation when Redis or TigerVector is unavailable locally.
 

@@ -10,7 +10,6 @@ __pycache__/
 # Local secrets
 .env
 
-# Scripts and documentation
-scripts/
+# Documentation (keep scripts for Docker)
 docs/
 *.md 
