@@ -114,20 +114,29 @@ This is our high-level roadmap, incorporating the safer, more methodical "Local 
 * **Epic 20: Cost Management System**  
   * **Story 20.1:** Cost Tracking Infrastructure: Implement token counting and cost aggregation.  
   * **Story 20.2:** Budget Enforcement: Implement daily budget checks and automatic throttling.  
-* **Epic 21: Advanced Chaos Engineering**  
-  * **Story 21.1:** Network Partition Testing: Write scripts to verify system fallback behavior when the Tailscale connection is dropped.
-  * **Story 21.2:** Refactor Core Logic: Refactor main.py and core/orchestrator.py to improve modularity and separation of concerns now that the full cognitive architecture is complete
-  * **Story 21.3:** Implement Smart Routing: Implement a triage/routing node in the orchestrator that can send simple queries to a faster, 2-phase response path, while sending complex queries to the full 3-phase deliberation path
+* **Epic 21: Advanced Economic Model**
+    **Story 21.1: Internal Bounty System:** Implement a mechanism for the `UserFacingOrchestrator` to create and fund 'bounty' tasks from a central reserve. The quality of the agent's work on these non-revenue-generating tasks will be validated by the Council's GEDI voting module to determine if a bonus reward is warranted.
+* **Epic 22: Core Logic Refinement & Optimization**
+    **Story 22.1: Refactor Core Logic:** Refactor `main.py` and `core/orchestrator.py` to improve modularity and separation of concerns now that the full cognitive architecture is complete.
+    **Story 22.2: Implement Smart Routing: I**mplement a triage/routing node in the orchestrator that can send simple queries to a faster, 2-phase response path, while sending complex queries to the full 3-phase deliberation path.
+* **Epic 23: Advanced Chaos Engineering**
+    **Story 23.1:** Network Partition Testing: Write scripts to verify system fallback behavior when the Tailscale connection is dropped.
 
-### **Sprint 6: Interface & Final Validation (Week 6\)**
+### Sprint 6: Interface & Final Validation (Week 6\)
 
-* **Epic 22: User Interface MVP**  
-  * **Story 22.1:** Streamlit Dashboard (connect to WebSocket).  
-  * **Story 22.2:** Real-time Response Streaming.  
-  * **Story 22.3:** Approval UI (for Manual mode).  
-* **Epic 23: Advanced Cost Management**  
-  * **Story 23.1:** Cost Dashboard: Add a real-time cost visibility tab to the Streamlit dashboard.  
-* **Epic 24: Final Validation**  
-  * **Story 24.1:** Pre-Flight Checklist Execution.  
-* **Epic 25: Final Chaos Engineering**  
-  * **Story 25.1:** Load Testing: Use locust to find performance breaking points of the final hybrid system.
+* **Epic 24: User Interface MVP**
+    **Story 24.1:** Streamlit Dashboard (connect to WebSocket).
+    **Story 24.2:** Real-time Response Streaming.
+    **Story 24.3:** Approval UI (for Manual mode).
+* **Epic 25: Advanced Cost Management**
+    **Story 25.1:** Cost Dashboard: Add a real-time cost visibility tab to the Streamlit dashboard.
+* **Epic 26: Final Validation**
+    **Story 26.1:** Pre-Flight Checklist Execution.
+* **Epic 27: Final Chaos Engineering**
+    **Story 27.1:** Load Testing: Use locust to find performance breaking points of the final hybrid system.
+
+### Sprint 7: Post MVP Improvements (Week 7)
+
+* **Epic 28: KIP Agent Capability Expansion**
+    **Story 28.1:** Create a `stock_tools.py` module and integrate it with a financial data API (e.g., Alpha Vantage) to give agents stock market analysis capabilities.
+    **Story 28.2:** Create a `marketing_tools.py` module and integrate it with social media and ad platform APIs to give agents lead generation capabilities.

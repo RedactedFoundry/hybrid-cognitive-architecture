@@ -33,6 +33,9 @@ import structlog
 # Import Ollama client for LLM integration
 from clients.ollama_client import get_ollama_client, LLMResponse
 
+# Import Pheromind layer for ambient intelligence
+from core.pheromind import PheromindLayer, PheromindSignal, pheromind_session
+
 # Type aliases for clarity
 RequestID = str
 AgentID = str
@@ -84,21 +87,6 @@ class StreamEvent(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional event metadata")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     request_id: Optional[str] = Field(default=None, description="Request ID for tracking")
-
-
-class PheromindSignal(BaseModel):
-    """
-    Represents a pheromone signal detected during ambient processing.
-    
-    Pheromones have a 12-second TTL and influence decision-making patterns
-    across the cognitive architecture.
-    """
-    pattern_id: str = Field(description="Unique identifier for the detected pattern")
-    strength: float = Field(ge=0.0, le=1.0, description="Signal strength (0-1)")
-    source_agent: str = Field(description="Agent that generated this pheromone")
-    detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: datetime = Field(description="When this pheromone expires (12s TTL)")
-    content: str = Field(description="Pattern description or content")
 
 
 class CouncilDecision(BaseModel):
@@ -510,28 +498,137 @@ class UserFacingOrchestrator:
         return state
     
     async def _pheromind_scan_node(self, state: OrchestratorState) -> OrchestratorState:
-        """Execute Pheromind ambient pattern detection."""
-        self.logger.debug("Starting Pheromind ambient scan")
+        """
+        Execute Pheromind ambient pattern detection.
+        
+        This method queries the Redis-based pheromind layer for existing signals
+        that match patterns in the user's input, providing ambient context for
+        the council deliberation.
+        """
+        self.logger.info(
+            "Starting Pheromind ambient scan", 
+            request_id=state.request_id,
+            user_input_preview=state.user_input[:100]
+        )
         state.update_phase(ProcessingPhase.PHEROMIND_SCAN)
         
-        # TODO: Implement Pheromind integration
-        # - Check Redis for existing pheromones
-        # - Detect new patterns in user input
-        # - Generate pheromone signals
-        # - Store in Redis with 12-second TTL
-        
-        # Placeholder pheromone signal
-        from datetime import timedelta
-        sample_signal = PheromindSignal(
-            pattern_id=f"pattern_{uuid.uuid4()}",
-            strength=0.7,
-            source_agent="ambient_scanner",
-            expires_at=datetime.now(timezone.utc) + timedelta(seconds=12),
-            content=f"Detected user intent pattern in: {state.user_input[:50]}..."
-        )
-        state.pheromind_signals.append(sample_signal)
+        try:
+            # Use pheromind session for ambient intelligence query
+            async with pheromind_session() as pheromind:
+                # Extract keywords from user input for pattern matching
+                search_patterns = self._extract_search_patterns(state.user_input)
+                
+                # Query for existing pheromind signals matching user context
+                all_signals = []
+                for pattern in search_patterns:
+                    signals = await pheromind.query_signals(pattern, min_strength=0.3)
+                    all_signals.extend(signals)
+                
+                # Remove duplicates while preserving strength-based ordering
+                unique_signals = self._deduplicate_signals(all_signals)
+                
+                # Update state with discovered ambient signals
+                state.pheromind_signals.extend(unique_signals)
+                
+                self.logger.info(
+                    "Pheromind scan completed",
+                    request_id=state.request_id,
+                    signals_found=len(unique_signals),
+                    search_patterns=search_patterns,
+                    strongest_signal=max([s.strength for s in unique_signals], default=0.0)
+                )
+                
+        except Exception as e:
+            # Pheromind failures should not block the main flow
+            self.logger.warning(
+                "Pheromind scan failed, continuing without ambient context",
+                request_id=state.request_id,
+                error=str(e),
+                error_type=type(e).__name__
+            )
+            # Continue processing even if pheromind is unavailable
         
         return state
+    
+    def _extract_search_patterns(self, user_input: str) -> List[str]:
+        """
+        Extract search patterns from user input for pheromind querying.
+        
+        This method identifies key terms and concepts that could match
+        existing pheromind signals in Redis.
+        
+        Args:
+            user_input: The user's query text
+            
+        Returns:
+            List[str]: Search patterns for pheromind queries
+        """
+        # Convert to lowercase for pattern matching
+        input_lower = user_input.lower()
+        
+        # Extract key terms (simple approach for MVP)
+        # TODO: Enhance with NLP-based keyword extraction in future iterations
+        patterns = []
+        
+        # Broad pattern: search for any signals
+        patterns.append("*")
+        
+        # Domain-specific patterns
+        if any(word in input_lower for word in ['ai', 'artificial', 'intelligence', 'model', 'llm']):
+            patterns.append("*ai*")
+            patterns.append("*intelligence*")
+            
+        if any(word in input_lower for word in ['tech', 'technology', 'computer', 'software']):
+            patterns.append("*tech*")
+            patterns.append("*technology*")
+            
+        if any(word in input_lower for word in ['help', 'question', 'ask', 'how', 'what', 'why']):
+            patterns.append("*question*")
+            patterns.append("*help*")
+            
+        if any(word in input_lower for word in ['complex', 'difficult', 'hard', 'complicated']):
+            patterns.append("*complexity*")
+            patterns.append("*complex*")
+            
+        if any(word in input_lower for word in ['creative', 'idea', 'brainstorm', 'think']):
+            patterns.append("*creative*")
+            patterns.append("*idea*")
+            
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_patterns = []
+        for pattern in patterns:
+            if pattern not in seen:
+                seen.add(pattern)
+                unique_patterns.append(pattern)
+                
+        return unique_patterns
+    
+    def _deduplicate_signals(self, signals: List[PheromindSignal]) -> List[PheromindSignal]:
+        """
+        Remove duplicate pheromind signals while preserving strongest signals.
+        
+        Args:
+            signals: List of potentially duplicate signals
+            
+        Returns:
+            List[PheromindSignal]: Deduplicated signals sorted by strength
+        """
+        if not signals:
+            return []
+            
+        # Group by pattern_id and keep strongest signal for each pattern
+        pattern_map = {}
+        for signal in signals:
+            if (signal.pattern_id not in pattern_map or 
+                signal.strength > pattern_map[signal.pattern_id].strength):
+                pattern_map[signal.pattern_id] = signal
+                
+        # Return sorted by strength (strongest first)
+        unique_signals = list(pattern_map.values())
+        unique_signals.sort(key=lambda s: s.strength, reverse=True)
+        
+        return unique_signals
     
     async def _council_deliberation_node(self, state: OrchestratorState) -> OrchestratorState:
         """
