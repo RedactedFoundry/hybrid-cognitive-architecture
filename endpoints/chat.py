@@ -13,7 +13,7 @@ import structlog
 
 from core.orchestrator import UserFacingOrchestrator
 from models.api_models import SimpleChatRequest, SimpleChatResponse
-from websockets.handlers import websocket_chat_handler
+from websockets.chat_handlers import websocket_chat_handler
 
 # Set up logger
 logger = structlog.get_logger(__name__)

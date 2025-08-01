@@ -1,21 +1,33 @@
 """
 Ollama Client for Hybrid AI Council
 Provides OpenAI-compatible API interface to Ollama models
+
+Now with comprehensive error boundaries and circuit breaker protection.
 """
 
 import asyncio
 import json
-import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import aiohttp
+import structlog
 
 from config import Config
+from utils.error_utils import (
+    ConnectionError,
+    TimeoutError,
+    ValidationError,
+    ProcessingError,
+    error_boundary,
+    ollama_circuit_breaker,
+    handle_ollama_error,
+    validate_user_input
+)
 
-# Set up logging
-logger = logging.getLogger(__name__)
+# Set up structured logging
+logger = structlog.get_logger("ollama_client")
 
 @dataclass
 class LLMResponse:
@@ -52,22 +64,35 @@ class OllamaClient:
             self.session = aiohttp.ClientSession(timeout=timeout)
         return self.session
     
+    @error_boundary(component="ollama_health_check")
     async def health_check(self) -> bool:
-        """Check if Ollama service is available"""
+        """Check if Ollama service is available with circuit breaker protection."""
         try:
-            session = await self._get_session()
-            async with session.get(f"{self.base_url}/api/tags") as response:
-                if response.status == 200:
-                    data = await response.json()
-                    logger.info(f"Ollama health check successful. Found {len(data.get('models', []))} models.")
-                    return True
-                else:
-                    logger.error(f"Ollama health check failed: HTTP {response.status}")
-                    return False
+            async def _health_check_impl():
+                session = await self._get_session()
+                async with session.get(f"{self.base_url}/api/tags") as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        model_count = len(response_data.get('models', []))
+                        logger.info("Ollama health check successful", model_count=model_count)
+                        return True
+                    else:
+                        raise ConnectionError(
+                            service="ollama",
+                            message=f"Health check failed with HTTP {response.status}",
+                            details={"status_code": response.status}
+                        )
+            
+            return await ollama_circuit_breaker.call(_health_check_impl)
+            
+        except (ConnectionError, ProcessingError):
+            # These are already handled by error_boundary
+            return False
         except Exception as e:
-            logger.error(f"Ollama health check error: {e}")
+            await handle_ollama_error(e, {"operation": "health_check"})
             return False
     
+    @error_boundary(component="ollama_generate")
     async def generate_response(
         self,
         prompt: str,
@@ -77,13 +102,24 @@ class OllamaClient:
         temperature: float = 0.7,
         timeout: float = 45.0
     ) -> LLMResponse:
-        """Generate response using Ollama model"""
+        """Generate response using Ollama model with comprehensive error handling."""
         start_time = datetime.now()
+        
+        # Input validation
+        validate_user_input(prompt)
+        if not model_alias:
+            raise ValidationError("model_alias", "Model alias cannot be empty")
         
         try:
             # Map model alias to actual Ollama model name
             actual_model = self.model_mapping.get(model_alias, model_alias)
-            logger.info(f"Generating response with {actual_model} (alias: {model_alias})")
+            logger.info(
+                "Generating response with Ollama",
+                model=actual_model,
+                alias=model_alias,
+                prompt_length=len(prompt),
+                max_tokens=max_tokens
+            )
             
             # Prepare the request payload for Ollama's /api/generate endpoint
             payload = {
@@ -120,14 +156,14 @@ class OllamaClient:
                         error=f"HTTP {response.status}: {error_text}"
                     )
                 
-                data = await response.json()
-                generated_text = data.get("response", "")
+                response_data = await response.json()
+                generated_text = response_data.get("response", "")
                 
                 # Calculate generation time
                 generation_time = (datetime.now() - start_time).total_seconds()
                 
                 # Extract token count (if available)
-                eval_count = data.get("eval_count", 0)
+                eval_count = response_data.get("eval_count", 0)
                 
                 logger.info(f"Generated {eval_count} tokens in {generation_time:.2f}s with {actual_model}")
                 
@@ -139,27 +175,66 @@ class OllamaClient:
                     success=True
                 )
                 
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout generating response with {model_alias} after {timeout}s")
-            return LLMResponse(
-                text="",
-                model=model_alias,
-                tokens_generated=0,
-                generation_time=timeout,
-                success=False,
-                error=f"Request timeout after {timeout} seconds"
+        except asyncio.TimeoutError as e:
+            generation_time = timeout
+            timeout_error = TimeoutError(
+                operation=f"generate_response_{model_alias}",
+                timeout_seconds=timeout,
+                details={"model": model_alias, "prompt_length": len(prompt)}
             )
-            
-        except Exception as e:
-            generation_time = (datetime.now() - start_time).total_seconds()
-            logger.error(f"Error generating response with {model_alias}: {e}")
+            await handle_ollama_error(timeout_error, {
+                "operation": "generate_response",
+                "model_alias": model_alias,
+                "timeout": timeout
+            })
             return LLMResponse(
                 text="",
                 model=model_alias,
                 tokens_generated=0,
                 generation_time=generation_time,
                 success=False,
-                error=str(e)
+                error=str(timeout_error)
+            )
+            
+        except aiohttp.ClientError as e:
+            generation_time = (datetime.now() - start_time).total_seconds()
+            connection_error = ConnectionError(
+                service="ollama",
+                message=f"Network error generating response: {str(e)}",
+                retryable=True,
+                details={"model": model_alias, "error_type": type(e).__name__}
+            )
+            await handle_ollama_error(connection_error, {
+                "operation": "generate_response",
+                "model_alias": model_alias
+            })
+            return LLMResponse(
+                text="",
+                model=model_alias,
+                tokens_generated=0,
+                generation_time=generation_time,
+                success=False,
+                error=str(connection_error)
+            )
+            
+        except Exception as e:
+            generation_time = (datetime.now() - start_time).total_seconds()
+            processing_error = ProcessingError(
+                message=f"Error generating response with {model_alias}: {str(e)}",
+                component="ollama_generate",
+                details={"model": model_alias, "error_type": type(e).__name__}
+            )
+            await handle_ollama_error(processing_error, {
+                "operation": "generate_response",
+                "model_alias": model_alias
+            })
+            return LLMResponse(
+                text="",
+                model=model_alias,
+                tokens_generated=0,
+                generation_time=generation_time,
+                success=False,
+                error=str(processing_error)
             )
     
     async def generate_response_stream(
@@ -236,17 +311,17 @@ class OllamaClient:
                             # Each line is a JSON object with the streaming data
                             line_text = line.decode('utf-8').strip()
                             if line_text:
-                                data = json.loads(line_text)
+                                response_chunk = json.loads(line_text)
                                 
                                 # Extract the token from the response
-                                token = data.get("response", "")
+                                token = response_chunk.get("response", "")
                                 if token:
                                     yield token
                                 
                                 # Check if this is the final response
-                                if data.get("done", False):
+                                if response_chunk.get("done", False):
                                     generation_time = (datetime.now() - start_time).total_seconds()
-                                    eval_count = data.get("eval_count", 0)
+                                    eval_count = response_chunk.get("eval_count", 0)
                                     logger.info(f"Streaming completed: {eval_count} tokens in {generation_time:.2f}s with {actual_model}")
                                     break
                                     
@@ -258,17 +333,54 @@ class OllamaClient:
                             logger.error(f"Error processing stream line: {str(e)}")
                             continue
                             
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout during streaming with {model_alias} after {timeout}s")
-            raise Exception(f"Streaming timeout after {timeout}s")
+        except asyncio.TimeoutError as e:
+            timeout_error = TimeoutError(
+                operation=f"generate_response_stream_{model_alias}",
+                timeout_seconds=timeout,
+                details={"model": model_alias, "prompt_length": len(prompt)}
+            )
+            await handle_ollama_error(timeout_error, {
+                "operation": "generate_response_stream",
+                "model_alias": model_alias,
+                "timeout": timeout
+            })
+            raise timeout_error
+            
+        except aiohttp.ClientError as e:
+            connection_error = ConnectionError(
+                service="ollama",
+                message=f"Network error during streaming: {str(e)}",
+                retryable=True,
+                details={"model": model_alias, "error_type": type(e).__name__}
+            )
+            await handle_ollama_error(connection_error, {
+                "operation": "generate_response_stream",
+                "model_alias": model_alias
+            })
+            raise connection_error
+            
         except Exception as e:
-            logger.error(f"Error during streaming with {model_alias}: {str(e)}")
-            raise
+            processing_error = ProcessingError(
+                message=f"Error during streaming with {model_alias}: {str(e)}",
+                component="ollama_stream",
+                details={"model": model_alias, "error_type": type(e).__name__}
+            )
+            await handle_ollama_error(processing_error, {
+                "operation": "generate_response_stream",
+                "model_alias": model_alias
+            })
+            raise processing_error
     
+    @error_boundary(component="ollama_close")
     async def close(self):
-        """Close the HTTP session"""
-        if self.session and not self.session.closed:
-            await self.session.close()
+        """Close the HTTP session with proper error handling."""
+        try:
+            if self.session and not self.session.closed:
+                await self.session.close()
+                logger.debug("Ollama client session closed successfully")
+        except Exception as e:
+            await handle_ollama_error(e, {"operation": "close_session"})
+            # Don't re-raise - closing should be best effort
 
 # Global client instance
 _ollama_client = None

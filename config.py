@@ -179,9 +179,14 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # Print current config (for testing)
 if __name__ == "__main__":
     config = Config()
-    print("🔧 Current Configuration:")
-    print(f"Redis: {config.redis_host}:{config.redis_port}")
-    print(f"TigerGraph: {config.tigergraph_url}")
-    print(f"Ollama: {config.ollama_url}")
-    print(f"Log Level: {config.log_level}")
-    print(f"Pheromind TTL: {config.pheromind_ttl}s") 
+    import structlog
+    logger = structlog.get_logger(__name__)
+    
+    logger.info("Current configuration loaded",
+        redis_host=config.redis_host,
+        redis_port=config.redis_port,
+        tigergraph_url=config.tigergraph_url,
+        ollama_url=config.ollama_url,
+        log_level=config.log_level,
+        pheromind_ttl=config.pheromind_ttl
+    ) 

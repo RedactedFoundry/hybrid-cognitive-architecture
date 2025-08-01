@@ -16,10 +16,8 @@ from .websocket_utils import (
     create_status_response
 )
 
-from .client_utils import (
-    get_cached_ollama_client,
-    get_client_with_fallback
-)
+# Removed client_utils imports to prevent circular imports
+# Import client_utils directly: from utils.client_utils import get_cached_ollama_client
 
 __all__ = [
     # WebSocket utilities
@@ -28,7 +26,6 @@ __all__ = [
     "create_error_response",
     "create_status_response",
     
-    # Client utilities
-    "get_cached_ollama_client",
-    "get_client_with_fallback"
+    # Client utilities removed to prevent circular imports
+    # Use: from utils.client_utils import get_cached_ollama_client
 ]

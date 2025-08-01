@@ -381,7 +381,7 @@ class TestMiddlewareIntegration:
                 middleware._validate_headers(request)
             except HTTPException:
                 pytest.fail("Middleware should fail open, not raise HTTPException")
-            except Exception:
+            except (ValueError, AttributeError, TypeError):
                 pass  # Expected behavior - internal error but not HTTP error
 
 

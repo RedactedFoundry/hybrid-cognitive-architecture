@@ -44,8 +44,14 @@ def create_test_audio(output_path: str, duration: float = 2.0, sample_rate: int 
         f.write(b'data')
         f.write(data_size.to_bytes(4, byteorder='little'))
         f.write(b'\x00' * data_size)  # Silent audio data
-    print(f"✅ Test audio created: {output_path}")
-    print(f"   Duration: {duration}s, Sample Rate: {sample_rate}Hz")
+    import structlog
+    logger = structlog.get_logger(__name__)
+    
+    logger.info("Test audio created successfully",
+        output_path=output_path,
+        duration=duration,
+        sample_rate=sample_rate
+    )
 
 if __name__ == "__main__":
     create_test_audio("voice_foundation/test_audio.wav")

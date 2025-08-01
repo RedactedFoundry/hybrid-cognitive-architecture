@@ -1,0 +1,167 @@
+name: Code Quality Gates
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  file-size-check:
+    runs-on: ubuntu-latest
+    name: "File Size Enforcement (500 line max)"
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check file sizes
+      run: |
+        echo "🔍 Checking for files exceeding 500 lines..."
+        
+        # Find Python files over 500 lines
+        oversized_files=$(find . -name "*.py" \
+          -not -path "./.git/*" \
+          -not -path "./venv/*" \
+          -not -path "./.venv/*" \
+          -not -path "./env/*" \
+          -not -path "./.env/*" \
+          -not -path "./kyutai-tts/*" \
+          -exec wc -l {} + | \
+          awk '$1 > 500 {print $2 " (" $1 " lines)"}' | \
+          grep -v "total$" || true)
+        
+        if [ -n "$oversized_files" ]; then
+          echo "❌ FILES EXCEEDING 500 LINE LIMIT:"
+          echo "$oversized_files"
+          echo ""
+          echo "💡 Please split these files into smaller, focused modules."
+          echo "   Each file should have a single responsibility."
+          echo ""
+          echo "📏 Current limits from .cursorrules:"
+          echo "   - Maximum: 500 lines per Python file"
+          echo "   - Recommended: Split at 400+ lines"
+          echo ""
+          exit 1
+        else
+          echo "✅ All Python files are within the 500-line limit!"
+        fi
+
+  lint-and-format:
+    runs-on: ubuntu-latest
+    name: "Code Style & Linting"
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black ruff
+    
+    - name: Check code formatting with Black
+      run: |
+        echo "🎨 Checking code formatting..."
+        black --check --diff --line-length 88 . || (
+          echo "❌ Code formatting issues found!"
+          echo "💡 Run 'black .' to fix formatting"
+          exit 1
+        )
+    
+    - name: Lint with Ruff
+      run: |
+        echo "🔍 Running Ruff linter..."
+        ruff check . || (
+          echo "❌ Linting issues found!"
+          echo "💡 Run 'ruff check --fix .' to auto-fix issues"
+          exit 1
+        )
+
+  security-check:
+    runs-on: ubuntu-latest
+    name: "Security & Credentials"
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check for hardcoded credentials
+      run: |
+        echo "🔒 Scanning for hardcoded credentials..."
+        
+        # Check for common credential patterns
+        credential_patterns=$(grep -r -n \
+          -E "(password|token|key|secret).*=.*['\"][^'\"]{8,}['\"]" \
+          --include="*.py" \
+          --exclude-dir=".git" \
+          --exclude-dir="venv" \
+          --exclude-dir=".venv" \
+          --exclude-dir="kyutai-tts" \
+          . || true)
+        
+        if [ -n "$credential_patterns" ]; then
+          echo "❌ POTENTIAL HARDCODED CREDENTIALS FOUND:"
+          echo "$credential_patterns"
+          echo ""
+          echo "💡 Use environment variables instead:"
+          echo "   token = os.getenv('API_TOKEN')"
+          echo ""
+          exit 1
+        else
+          echo "✅ No hardcoded credentials detected!"
+        fi
+    
+    - name: Check for print statements in production
+      run: |
+        echo "📝 Checking for print() statements in production code..."
+        
+        # Find print statements outside test files
+        print_statements=$(grep -r -n "print(" \
+          --include="*.py" \
+          --exclude="*test*.py" \
+          --exclude-dir=".git" \
+          --exclude-dir="venv" \
+          --exclude-dir=".venv" \
+          --exclude-dir="kyutai-tts" \
+          --exclude-dir="tests" \
+          . || true)
+        
+        if [ -n "$print_statements" ]; then
+          echo "❌ PRINT STATEMENTS FOUND IN PRODUCTION CODE:"
+          echo "$print_statements"
+          echo ""
+          echo "💡 Use structured logging instead:"
+          echo "   logger.info('message', field=value)"
+          echo ""
+          exit 1
+        else
+          echo "✅ No print() statements in production code!"
+        fi
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    name: "Dependency Security"
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    
+    - name: Install safety
+      run: pip install safety
+    
+    - name: Check dependencies for vulnerabilities
+      run: |
+        echo "🛡️ Checking dependencies for known vulnerabilities..."
+        pip install -r pyproject.toml 2>/dev/null || echo "Using poetry dependencies"
+        safety check || (
+          echo "❌ Security vulnerabilities found in dependencies!"
+          echo "💡 Update vulnerable packages or review exceptions"
+          exit 1
+        )

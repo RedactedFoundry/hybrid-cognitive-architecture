@@ -5,6 +5,7 @@ Test suite for the prompt caching system.
 
 import asyncio
 import pytest
+import redis.exceptions  # Add redis import for redis.exceptions.RedisError usage
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
 
@@ -281,7 +282,7 @@ async def test_end_to_end_caching():
             stats = await cache_manager.get_orchestrator_cache_stats()
             assert stats["cache_enabled"] is True
             
-    except Exception:
+    except (ConnectionError, ImportError, ModuleNotFoundError, redis.exceptions.RedisError):
         # Skip if Redis is not available
         pytest.skip("Redis not available for integration test")
 

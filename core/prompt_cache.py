@@ -221,14 +221,14 @@ class PromptCache:
             
             if cached_data:
                 try:
-                    data = json.loads(cached_data)
+                    cached_response = json.loads(cached_data)
                     
                     # Update hit count
-                    data["hit_count"] = data.get("hit_count", 0) + 1
+                    cached_response["hit_count"] = cached_response.get("hit_count", 0) + 1
                     await self._redis.setex(
                         cache_key,
                         self.cache_config.default_ttl_hours * 3600,
-                        json.dumps(data)
+                        json.dumps(cached_response)
                     )
                     
                     # Update stats
@@ -237,10 +237,10 @@ class PromptCache:
                     self._update_response_time_stats(response_time, True)
                     
                     cache_hit = CacheHit(
-                        response=data["response"],
-                        cached_at=datetime.fromisoformat(data["cached_at"]),
-                        hit_count=data["hit_count"],
-                        metadata=data.get("metadata", {}),
+                        response=cached_response["response"],
+                        cached_at=datetime.fromisoformat(cached_response["cached_at"]),
+                        hit_count=cached_response["hit_count"],
+                        metadata=cached_response.get("metadata", {}),
                         similarity_score=1.0,  # Exact match
                         cache_key=cache_key
                     )
@@ -259,8 +259,8 @@ class PromptCache:
                     self.logger.warning("Invalid cache data found", cache_key=cache_key, error=str(e))
                     await self._redis.delete(cache_key)
                     
-            # TODO: Implement semantic similarity search for future enhancement
-            # For now, we'll focus on exact matches for reliability
+            # Note: Semantic similarity search could be added as future enhancement.
+            # Current implementation focuses on exact matches for reliability and performance.
             
             # Cache miss
             self._stats.cache_misses += 1
@@ -388,9 +388,9 @@ class PromptCache:
                 total_size = 0
                 
                 for key in sample_keys:
-                    data = await self._redis.get(key)
-                    if data:
-                        total_size += len(data.encode('utf-8'))
+                    cached_entry = await self._redis.get(key)
+                    if cached_entry:
+                        total_size += len(cached_entry.encode('utf-8'))
                         
                 if sample_size > 0:
                     avg_size = total_size / sample_size

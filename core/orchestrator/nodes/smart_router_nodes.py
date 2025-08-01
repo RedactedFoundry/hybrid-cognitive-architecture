@@ -5,11 +5,17 @@ Smart Router Processing Node - Central Nervous System
 This module contains the Smart Router logic for intent classification and routing.
 The Smart Router analyzes user input and routes requests to the appropriate 
 cognitive layer based on complexity and task type.
+
+Now with comprehensive error boundaries for production reliability.
 """
 
 from config.models import COORDINATOR_MODEL
 from .base import CognitiveProcessingNode
 from ..models import OrchestratorState, ProcessingPhase, TaskIntent
+from utils.error_utils import (
+    error_boundary,
+    handle_cognitive_processing_error
+)
 
 
 class SmartRouterNode(CognitiveProcessingNode):
@@ -26,10 +32,12 @@ class SmartRouterNode(CognitiveProcessingNode):
     - simple_query_task: Fast response path for immediate answers
     """
     
+    @error_boundary(component="smart_router_process")
     async def process(self, state: OrchestratorState) -> OrchestratorState:
-        """Process Smart Router triage analysis."""
+        """Process Smart Router triage analysis with comprehensive error handling."""
         return await self.smart_triage_node(state)
     
+    @error_boundary(component="smart_router_triage")
     async def smart_triage_node(self, state: OrchestratorState) -> OrchestratorState:
         """
         Smart Router - Central Nervous System for Intent Classification.
@@ -185,10 +193,24 @@ YOUR CLASSIFICATION (ONE WORD ONLY):"""
                            will_route_to=f"{intent.value} path")
             
         except Exception as e:
+            # Handle processing error with comprehensive logging and fallback
+            processing_error = await handle_cognitive_processing_error(
+                error=e,
+                phase="smart_triage",
+                component="smart_router",
+                request_id=state.request_id
+            )
+            
             # On error, default to complex reasoning (safe fallback)
-            error_msg = f"Smart triage failed: {str(e)}"
             state.routing_intent = TaskIntent.COMPLEX_REASONING_TASK
-            self.logger.error("Smart triage error, defaulting to complex reasoning", 
-                            error=error_msg)
+            state.metadata["smart_router_error"] = str(processing_error)
+            state.metadata["fallback_reason"] = "Error in intent classification, using safe fallback"
+            
+            self.logger.warning(
+                "Smart triage error, defaulting to complex reasoning for safety",
+                error=str(processing_error),
+                fallback_intent=TaskIntent.COMPLEX_REASONING_TASK.value,
+                request_id=state.request_id
+            )
         
         return state

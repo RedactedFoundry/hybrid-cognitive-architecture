@@ -384,7 +384,7 @@ class PheromindLayer:
                 await pipe.hincrby(analytics_key, f"agent:{signal.source_agent}", 1)
                 await pipe.expire(analytics_key, 300)  # 5 minute analytics window
                 await pipe.execute()
-        except Exception:
+        except (ConnectionError, TimeoutError, RuntimeError, redis.exceptions.RedisError):
             pass  # Analytics updates are non-critical
 
 

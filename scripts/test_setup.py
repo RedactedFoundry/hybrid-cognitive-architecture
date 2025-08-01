@@ -14,6 +14,10 @@ import sys
 import requests
 import time
 from pathlib import Path
+import structlog
+
+# Configure logging for this validation script
+logger = structlog.get_logger("setup_validation")
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -21,39 +25,48 @@ sys.path.append(str(project_root))
 
 def test_tigergraph():
     """Test TigerGraph Community Edition connectivity and functionality"""
-    print("🔍 Testing TigerGraph Community Edition...")
+    logger.info("Testing TigerGraph Community Edition", component="tigergraph")
     
     try:
         from clients.tigervector_client import test_connection, get_tigergraph_connection
         
         # Test basic connectivity
         if not test_connection():
-            print("❌ TigerGraph connection failed")
-            print("💡 Run: ./scripts/setup-tigergraph.sh")
+            logger.error("TigerGraph connection failed", 
+                        component="tigergraph",
+                        solution="Run: ./scripts/setup-tigergraph.sh")
             return False
         
         # Test graph operations
         conn = get_tigergraph_connection("HybridAICouncil")
         if not conn:
-            print("❌ TigerGraph connection object failed")
+            logger.error("TigerGraph connection object failed", component="tigergraph")
             return False
         
         # Test basic operations
         try:
             version = conn.getVersion()
-            print(f"✅ TigerGraph version: {version}")
+            logger.info("TigerGraph version retrieved", 
+                       component="tigergraph", 
+                       version=version)
         except Exception as e:
-            print(f"⚠️  TigerGraph connected but limited functionality: {e}")
+            logger.warning("TigerGraph connected but limited functionality", 
+                          component="tigergraph", 
+                          error=str(e))
         
-        print("✅ TigerGraph Community Edition: PASSED")
+        logger.info("TigerGraph Community Edition test passed", component="tigergraph")
         return True
         
     except ImportError as e:
-        print(f"❌ Import error: {e}")
-        print("💡 Run: pip install pyTigerGraph")
+        logger.error("TigerGraph import error", 
+                    component="tigergraph", 
+                    error=str(e),
+                    solution="Run: pip install pyTigerGraph")
         return False
     except Exception as e:
-        print(f"❌ TigerGraph test failed: {e}")
+        logger.error("TigerGraph test failed", 
+                    component="tigergraph", 
+                    error=str(e))
         return False
 
 def test_redis():

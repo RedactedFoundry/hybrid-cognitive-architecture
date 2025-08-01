@@ -42,13 +42,13 @@ async def get_current_bitcoin_price() -> str:
                 response.raise_for_status()
                 
                 # Parse JSON response
-                data = await response.json()
+                price_data = await response.json()
                 
                 # Extract Bitcoin price
-                if "bitcoin" not in data or "usd" not in data["bitcoin"]:
+                if "bitcoin" not in price_data or "usd" not in price_data["bitcoin"]:
                     raise ValueError("Invalid API response format")
                     
-                bitcoin_price = data["bitcoin"]["usd"]
+                bitcoin_price = price_data["bitcoin"]["usd"]
                 
                 # Format as currency string
                 price_formatted = f"${bitcoin_price:,.2f}"
@@ -112,12 +112,12 @@ async def get_current_ethereum_price() -> str:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url) as response:
                 response.raise_for_status()
-                data = await response.json()
+                price_data = await response.json()
                 
-                if "ethereum" not in data or "usd" not in data["ethereum"]:
+                if "ethereum" not in price_data or "usd" not in price_data["ethereum"]:
                     raise ValueError("Invalid API response format")
                     
-                ethereum_price = data["ethereum"]["usd"]
+                ethereum_price = price_data["ethereum"]["usd"]
                 price_formatted = f"${ethereum_price:,.2f}"
                 
                 logger.info(
@@ -154,12 +154,12 @@ async def get_crypto_market_summary() -> Dict[str, Any]:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url) as response:
                 response.raise_for_status()
-                data = await response.json()
+                market_data = await response.json()
                 
                 # Format the data into a readable summary
                 market_summary = {}
                 
-                for crypto_id, price_data in data.items():
+                for crypto_id, price_data in market_data.items():
                     if "usd" in price_data:
                         price = price_data["usd"]
                         change_24h = price_data.get("usd_24h_change", 0)

@@ -22,6 +22,11 @@ import os
 import pyTigerGraph as tg
 import structlog
 
+from utils.error_utils import (
+    error_boundary,
+    handle_tigergraph_error
+)
+
 # Set up structured logging
 logger = structlog.get_logger("tigervector_client")
 
@@ -84,27 +89,45 @@ def get_tigergraph_connection(graph_name="HybridAICouncil"):
                     ])
         return None
 
+@error_boundary(component="tigergraph_test")
 def test_connection():
     """
-    Test function to verify TigerGraph Community Edition connectivity.
+    Test function to verify TigerGraph Community Edition connectivity with comprehensive error handling.
     
     Returns:
         bool: True if connection successful, False otherwise
     """
     logger.info("Testing TigerGraph Community Edition connection")
-    conn = get_tigergraph_connection()
     
-    if conn:
+    try:
+        conn = get_tigergraph_connection()
+        
+        if conn:
+            try:
+                # Try to get server info
+                info = conn.getVersion()
+                logger.info("TigerGraph version retrieved", version=info)
+                return True
+            except Exception as version_error:
+                logger.warning("Connected but limited functionality", error=str(version_error))
+                return True  # Connection exists, just limited
+        else:
+            logger.error("TigerGraph connection failed")
+            return False
+            
+    except Exception as e:
+        # Use sync version of handle_tigergraph_error
+        import asyncio
         try:
-            # Try to get server info
-            info = conn.getVersion()
-            logger.info("TigerGraph version retrieved", version=info)
-            return True
-        except Exception as e:
-            logger.warning("Connected but limited functionality", error=str(e))
-            return True  # Connection exists, just limited
-    else:
-        logger.error("TigerGraph connection failed")
+            loop = asyncio.get_event_loop()
+            loop.create_task(handle_tigergraph_error(e, {"operation": "test_connection"}))
+        except RuntimeError:
+            # No event loop running, just log
+            logger.error(
+                "TigerGraph connection test failed with exception",
+                error=str(e),
+                error_type=type(e).__name__
+            )
         return False
 
 if __name__ == "__main__":

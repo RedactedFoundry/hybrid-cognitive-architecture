@@ -1,0 +1,60 @@
+# Pre-commit hooks for Hybrid AI Council
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  # File size enforcement (custom)
+  - repo: local
+    hooks:
+      - id: file-size-check
+        name: "File Size Limit (500 lines)"
+        entry: python scripts/check-file-sizes.py --strict
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+
+  # Code formatting
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        args: [--line-length=88]
+        language_version: python3.11
+
+  # Linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.1
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # Security checks
+  - repo: local
+    hooks:
+      - id: no-hardcoded-credentials
+        name: "No Hardcoded Credentials"
+        entry: bash -c 'if grep -r -E "(password|token|key|secret).*=.*['\''\"'][^'\''\"]{8,}['\''\"']" --include="*.py" --exclude-dir="kyutai-tts" .; then echo "❌ Hardcoded credentials found!"; exit 1; fi'
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: no-print-statements
+        name: "No Print Statements in Production"
+        entry: bash -c 'if grep -r "print(" --include="*.py" --exclude="*test*.py" --exclude-dir="tests" --exclude-dir="kyutai-tts" .; then echo "❌ Print statements in production code!"; exit 1; fi'
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile, black]
+
+  # Type checking (optional - uncomment if desired)
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies: [types-requests]

@@ -41,7 +41,7 @@ class MockSTTEngine:
             else:
                 return "Hello, this is a test of the voice foundation system."
                 
-        except Exception:
+        except (FileNotFoundError, OSError, ValueError, AttributeError):
             return "Could not process audio"
 
 class MockTTSEngine:
@@ -122,7 +122,7 @@ class MockTTSEngine:
                 f.write(bytes(audio_data))
             return True
             
-        except Exception as e:
+        except (OSError, IOError, ValueError, TypeError) as e:
             logger.error("TTS synthesis failed", error=str(e))
             return False
 

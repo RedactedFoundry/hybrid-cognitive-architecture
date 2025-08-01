@@ -50,7 +50,7 @@ from middleware.rate_limiting import RateLimit
 from middleware.request_validation import ValidationConfig
 from middleware.security_headers import ProductionSecurityConfig, SecurityConfig
 from voice_foundation.orchestrator_integration import voice_orchestrator
-from websockets.handlers import active_connections
+from utils.websocket_utils import active_connections
 
 # Global state
 app_start_time = datetime.now(timezone.utc)
@@ -69,8 +69,10 @@ async def _verify_services_startup():
             logger.info("✅ Ollama service is available")
         else:
             logger.warning("⚠️ Ollama service health check failed")
+    except (ConnectionError, TimeoutError) as e:
+        logger.error("Ollama service connection failed", error=str(e), error_type=type(e).__name__)
     except Exception as e:
-        logger.error("❌ Ollama service unavailable", error=str(e))
+        logger.error("Ollama service unexpected error", error=str(e), error_type=type(e).__name__)
     
     # Check Redis (optional for startup)
     try:
@@ -80,8 +82,10 @@ async def _verify_services_startup():
             logger.info("✅ Redis service is available")
         else:
             logger.warning("⚠️ Redis service unavailable (degraded mode)")
+    except (ConnectionError, TimeoutError) as e:
+        logger.warning("Redis connection failed - degraded mode", error=str(e), error_type=type(e).__name__)
     except Exception as e:
-        logger.warning("⚠️ Redis service unavailable (degraded mode)", error=str(e))
+        logger.warning("Redis unexpected error - degraded mode", error=str(e), error_type=type(e).__name__)
     
     # Check TigerGraph (optional for startup)
     try:
@@ -91,8 +95,10 @@ async def _verify_services_startup():
             logger.info("✅ TigerGraph service is available")
         else:
             logger.warning("⚠️ TigerGraph service unavailable (degraded mode)")
+    except (ConnectionError, TimeoutError) as e:
+        logger.warning("TigerGraph connection failed - degraded mode", error=str(e), error_type=type(e).__name__)
     except Exception as e:
-        logger.warning("⚠️ TigerGraph service unavailable (degraded mode)", error=str(e))
+        logger.warning("TigerGraph unexpected error - degraded mode", error=str(e), error_type=type(e).__name__)
 
 
 @asynccontextmanager

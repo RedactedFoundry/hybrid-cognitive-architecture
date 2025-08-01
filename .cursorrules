@@ -82,6 +82,45 @@ Reference the 6-week plan to provide context-aware help:
 * **Pre-commit Hooks:** Recommend setting up pre-commit hooks with black, ruff, and pytest to automate code quality and testing before commits.  
 * **Remove Dead Code:** If a file, helper, or abstraction becomes unused after a refactor, recommend its prompt deletion to keep the codebase lean.
 
+### **Code Quality Gates (CRITICAL - Enforce Always)**
+
+These rules prevent the exact issues that required emergency cleanup:
+
+#### **🚨 Security & Credentials**
+* **NEVER hardcode credentials:** Use `os.getenv("VAR_NAME")` with required=True for all API keys, tokens, passwords
+* **NEVER use fallback credentials:** No "public_token" or default secrets - fail fast if env vars missing
+* **NEVER commit .env files:** All secrets must be in environment variables only
+
+#### **📏 File Size Limits (Anti-Bloat)**
+* **500-line maximum:** Any Python file exceeding 500 lines MUST be reviewed for potential split into focused modules.
+* **Single Responsibility:** Each module should have ONE clear purpose - budget, transactions, analysis, etc.
+* **NO backup files:** NEVER create `*_backup.py`, `*_original.py` files - use git for version control
+
+#### **🖨️ Production Logging Standards**
+* **NO print() in production code:** Use `structlog.get_logger()` with structured fields
+* **Exception:** Test files (`test_*.py`) and user-facing validation scripts may use print()
+* **Always include context:** `logger.info("action", component="name", field=value)`
+
+#### **🚫 Exception Handling Anti-Patterns**  
+* **NEVER use `except Exception:`** Use specific exceptions: `ConnectionError`, `ValidationError`, `TimeoutError`
+* **NEVER silent failures:** Every exception must be logged with context
+* **Use error boundaries:** Apply consistent error handling patterns across modules
+
+#### **📝 Variable Naming Standards**
+* **NO generic names:** Replace `data` → `message_data`, `temp` → `temp_audio_file`, `result` → `orchestrator_response`  
+* **Be specific:** Variable names should describe content and purpose
+* **Context matters:** `user_id` not `id`, `redis_client` not `client`
+
+#### **⚠️ TODO & Technical Debt**
+* **NO orphaned TODOs:** Every TODO must have a tracking issue or immediate resolution plan
+* **Remove completed TODOs:** Clean up resolved TODO comments immediately  
+* **Document decisions:** If you decide NOT to implement a TODO, remove it and explain why
+
+#### **🏗️ Architecture Complexity Checks**
+* **Question every abstraction:** Ask "Is this simpler as a utility function?"
+* **Avoid over-engineering:** No inheritance unless proven necessary by code duplication
+* **Prefer composition:** Small, focused functions over large classes
+
 ### **Code Style**
 
 * Follow PEP 8 with the Black formatter (88-char line limit).  
@@ -93,6 +132,7 @@ Reference the 6-week plan to provide context-aware help:
 * Write pytest tests alongside implementation.  
 * Use structlog for JSON logging, but **log only meaningful state changes and errors.**  
 * Always include request\_id in log context.
+* **ENFORCE:** All production code must use `logger.info()` not `print()` statements.
 
 ## **Common Commands & Troubleshooting**
 
@@ -143,5 +183,17 @@ pytest tests/test\_file.py::test\_function \-v
 5. **State Sync:** TigerGraph is the single source of truth for persistent state. Redis is ephemeral.  
 6. **Model Startup:** The local vLLM service can take 5-10 minutes to load models. Account for this in startup scripts and health checks.
 7. **Community Edition:** TigerGraph 4.2.0 Community Edition is license-free but requires 2.4GB download from dl.tigergraph.com.
+8. **File Size Enforcement:** STOP immediately if any file exceeds 500 lines - split into focused modules first.
+9. **Security First:** NEVER proceed with hardcoded credentials - set up environment variables properly.
+
+## **Pre-Code-Generation Checklist**
+
+Before writing ANY code, verify:
+- [ ] Will this file stay under 500 lines?
+- [ ] Am I using specific exception types?
+- [ ] Are all credentials from environment variables?
+- [ ] Am I using structlog instead of print() for production code?
+- [ ] Do variable names clearly describe their content?
+- [ ] Can this be simpler without the abstraction I'm planning?
 
 Remember: We are building a production-grade system. Every decision must consider reliability, observability, cost, and above all, **simplicity and maintainability.**

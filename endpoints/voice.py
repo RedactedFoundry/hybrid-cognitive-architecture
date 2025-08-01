@@ -19,7 +19,8 @@ import structlog
 from models.api_models import VoiceChatResponse
 from utils.websocket_utils import WebSocketConnectionManager
 from voice_foundation.orchestrator_integration import voice_orchestrator
-from websockets.handlers import handle_voice_input, handle_conversation_interrupt
+from websockets.voice_handlers import handle_voice_input
+from websockets.chat_handlers import handle_conversation_interrupt
 
 # Set up logger
 logger = structlog.get_logger(__name__)
@@ -185,16 +186,16 @@ async def websocket_voice_endpoint(websocket: WebSocket):
         while True:
             try:
                 # Receive message from client
-                data = await websocket.receive_json()
+                request_data = await websocket.receive_json()
                 
-                if data["type"] == "voice_input":
-                    await handle_voice_input(websocket, data, conversation_id)
-                elif data["type"] == "interrupt":
+                if request_data["type"] == "voice_input":
+                    await handle_voice_input(websocket, request_data, conversation_id)
+                elif request_data["type"] == "interrupt":
                     await handle_conversation_interrupt(websocket, conversation_id)
                 else:
                     await websocket.send_json({
                         "type": "error",
-                        "message": f"Unknown message type: {data['type']}"
+                        "message": f"Unknown message type: {request_data['type']}"
                     })
                     
             except Exception as e:

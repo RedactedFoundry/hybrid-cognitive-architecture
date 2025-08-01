@@ -13,9 +13,10 @@ Features:
 - Graceful disconnection handling
 """
 
+import asyncio
 import json
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 from fastapi import WebSocket, WebSocketDisconnect
 import structlog
@@ -25,6 +26,9 @@ logger = structlog.get_logger(__name__)
 
 # Global connection tracking (shared with handlers)
 active_connections: Dict[str, WebSocket] = {}
+
+# Track active response tasks for cancellation support
+active_response_tasks: Dict[str, set] = {}
 
 
 class WebSocketError(Exception):
@@ -78,6 +82,9 @@ class WebSocketConnectionManager:
             
             # Track active connection
             active_connections[connection_id] = websocket
+            
+            # Initialize task tracking for this connection
+            active_response_tasks[connection_id] = set()
             
             self.logger.info("WebSocket connection established", 
                            connection_id=connection_id,
@@ -172,6 +179,9 @@ class WebSocketConnectionManager:
             connection_id: Connection ID to clean up
             reason: Reason for cleanup (normal, error, disconnect)
         """
+        # Cancel any active response tasks for this connection
+        await self.cancel_active_response_tasks(connection_id)
+        
         if connection_id in active_connections:
             websocket = active_connections.pop(connection_id)
             
@@ -179,13 +189,17 @@ class WebSocketConnectionManager:
             if reason == "error":
                 try:
                     await websocket.close(code=1011, reason="Server error")
-                except Exception:
+                except (WebSocketDisconnect, ConnectionError, RuntimeError):
                     pass  # Already closed or closing
             
-            self.logger.info("WebSocket connection cleaned up", 
-                           connection_id=connection_id,
-                           reason=reason,
-                           remaining_connections=len(active_connections))
+        # Clean up task tracking for this connection
+        if connection_id in active_response_tasks:
+            active_response_tasks.pop(connection_id)
+            
+        self.logger.info("WebSocket connection cleaned up", 
+                        connection_id=connection_id,
+                        reason=reason,
+                        remaining_connections=len(active_connections))
     
     async def handle_disconnect(self, connection_id: str, disconnect_exception: WebSocketDisconnect) -> None:
         """
@@ -200,6 +214,58 @@ class WebSocketConnectionManager:
         self.logger.info("WebSocket connection closed by client", 
                         connection_id=connection_id,
                         disconnect_code=getattr(disconnect_exception, 'code', 'unknown'))
+    
+    def register_response_task(self, connection_id: str, task: asyncio.Task) -> None:
+        """
+        Register an active response task for cancellation support.
+        
+        Args:
+            connection_id: Connection ID associated with the task
+            task: The asyncio Task to track
+        """
+        if connection_id not in active_response_tasks:
+            active_response_tasks[connection_id] = set()
+        
+        active_response_tasks[connection_id].add(task)
+        self.logger.debug("Response task registered", 
+                         connection_id=connection_id,
+                         task_count=len(active_response_tasks[connection_id]))
+    
+    async def cancel_active_response_tasks(self, connection_id: str) -> None:
+        """
+        Cancel all active response tasks for a connection.
+        
+        Args:
+            connection_id: Connection ID to cancel tasks for
+        """
+        if connection_id not in active_response_tasks:
+            return
+        
+        tasks = active_response_tasks[connection_id].copy()
+        if not tasks:
+            return
+        
+        self.logger.info("Cancelling active response tasks", 
+                        connection_id=connection_id,
+                        task_count=len(tasks))
+        
+        # Cancel all tasks
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        
+        # Wait for tasks to complete cancellation
+        if tasks:
+            try:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            except (asyncio.CancelledError, RuntimeError):
+                # Ignore cancellation exceptions
+                pass
+        
+        # Clear the task set
+        active_response_tasks[connection_id].clear()
+        
+        self.logger.debug("All response tasks cancelled", connection_id=connection_id)
 
 
 # Utility functions for response creation
