@@ -21,24 +21,35 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from core.orchestrator import UserFacingOrchestrator
 
 # Import voice foundation
-from voice_foundation.simple_voice_pipeline import voice_foundation, VoiceFoundation
+from voice_foundation.production_voice_engines import create_voice_foundation
+from voice_foundation.simple_voice_pipeline import VoiceFoundation
 
 class VoiceOrchestrator:
     """
     Integration layer that connects voice input/output with the cognitive orchestrator
     """
     
-    def __init__(self):
+    def __init__(self, use_production=True, force_parakeet=True):
         self.orchestrator = UserFacingOrchestrator()
-        self.voice_foundation = voice_foundation
+        self.voice_foundation = None
+        self.use_production = use_production
+        self.force_parakeet = force_parakeet
         self.is_initialized = False
         
     async def initialize(self):
         """Initialize both voice foundation and orchestrator"""
         print("🎤 Initializing Voice-Enabled Orchestrator...")
         
-        # Initialize voice foundation
-        await self.voice_foundation.initialize()
+        # Create and initialize voice foundation
+        if self.use_production:
+            print("🚀 Using SOTA Production Voice Pipeline (2025)")
+        else:
+            print("🔧 Using Mock Voice Pipeline for testing")
+            
+        self.voice_foundation = await create_voice_foundation(
+            use_production=self.use_production,
+            force_parakeet=self.force_parakeet
+        )
         
         # Initialize orchestrator (if not already done)
         # Note: orchestrator initialization is handled in __post_init__
@@ -282,8 +293,8 @@ class VoiceOrchestrator:
                 "error": f"Voice processing error: {str(e)}"
             }
 
-# Global voice orchestrator instance
-voice_orchestrator = VoiceOrchestrator()
+# Global voice orchestrator instance - using SOTA production models (2025)
+voice_orchestrator = VoiceOrchestrator(use_production=True, force_parakeet=True)
 
 # Convenience functions
 async def process_voice_conversation(
