@@ -79,6 +79,7 @@ class PheromindLayer:
         self.logger = structlog.get_logger("PheromindLayer")
         self._redis_pool: Optional[redis.ConnectionPool] = None
         self._redis: Optional[redis.Redis] = None
+        self._redis_available: bool = False
         
     async def __aenter__(self):
         """Async context manager entry - establish Redis connection."""
@@ -113,20 +114,24 @@ class PheromindLayer:
                 redis_host=self.config.redis_host,
                 redis_port=self.config.redis_port
             )
+            self._redis_available = True
             
         except redis.ConnectionError as e:
-            self.logger.error(
-                "Failed to connect to Redis for Pheromind Layer",
+            self.logger.warning(
+                "Redis unavailable for Pheromind Layer - degraded mode enabled",
                 error=str(e),
                 redis_host=self.config.redis_host,
                 redis_port=self.config.redis_port
             )
-            raise ConnectionError(f"Redis connection failed: {e}")
+            # Allow session creation but mark Redis as unavailable
+            self._redis_available = False
+            self._redis = None
+            self._redis_pool = None
             
     async def _disconnect(self) -> None:
         """Clean shutdown of Redis connections."""
         if self._redis:
-            await self._redis.close()
+            await self._redis.aclose()
         if self._redis_pool:
             await self._redis_pool.disconnect()
             
@@ -205,8 +210,9 @@ class PheromindLayer:
         Raises:
             ConnectionError: If Redis is unavailable
         """
-        if not self._redis:
-            raise ConnectionError("Pheromind Layer not connected to Redis")
+        if not self._redis_available:
+            self.logger.warning("Redis unavailable - returning empty signals list")
+            raise ConnectionError("Redis unavailable for pheromind operations")
             
         try:
             # Build search pattern for Redis keys

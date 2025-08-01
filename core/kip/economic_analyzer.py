@@ -184,10 +184,13 @@ class EconomicAnalyzer:
                     total_balance=0,
                     total_earned=0,
                     total_spent=0,
-                    average_performance=0.0,
+                    frozen_agents=0,
+                    total_transactions=0,
+                    average_transaction_amount=0.0,
+                    system_roi=0.0,
                     top_performers=[],
                     poor_performers=[],
-                    generated_at=datetime.now(timezone.utc)
+                    average_performance=0.0
                 )
                 
             # Analyze each agent
@@ -236,16 +239,25 @@ class EconomicAnalyzer:
             top_performers = [agent["agent_id"] for agent in sorted_agents[:5] if agent["performance_score"] > 1.0]
             poor_performers = [agent["agent_id"] for agent in sorted_agents[-5:] if agent["performance_score"] < 0.5]
             
+            # Calculate additional required fields
+            frozen_agents = 0  # TODO: Implement frozen agent tracking
+            total_transactions = len(budget_keys)  # Approximate based on agents
+            average_transaction_amount = (total_spent / total_transactions) if total_transactions > 0 else 0.0
+            system_roi = (total_earned / total_spent) if total_spent > 0 else 0.0
+            
             analytics = EconomicAnalytics(
                 total_agents=total_agents,
                 active_agents=active_agents,
                 total_balance=total_balance,
                 total_earned=total_earned,
                 total_spent=total_spent,
-                average_performance=average_performance,
+                frozen_agents=frozen_agents,
+                total_transactions=total_transactions,
+                average_transaction_amount=average_transaction_amount,
+                system_roi=system_roi,
                 top_performers=top_performers,
                 poor_performers=poor_performers,
-                generated_at=datetime.now(timezone.utc)
+                average_performance=average_performance
             )
             
             self.logger.info(
@@ -272,10 +284,13 @@ class EconomicAnalyzer:
                 total_balance=0,
                 total_earned=0,
                 total_spent=0,
-                average_performance=0.0,
+                frozen_agents=0,
+                total_transactions=0,
+                average_transaction_amount=0.0,
+                system_roi=0.0,
                 top_performers=[],
                 poor_performers=[],
-                generated_at=datetime.now(timezone.utc)
+                average_performance=0.0
             )
             
     async def _calculate_performance_metrics(

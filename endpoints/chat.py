@@ -8,7 +8,7 @@ Extracted from main.py for better modularity and maintainability.
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, HTTPException
 import structlog
 
 from core.orchestrator import UserFacingOrchestrator
@@ -81,12 +81,16 @@ async def simple_chat(request: SimpleChatRequest):
         processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
         logger.error("Simple chat error", error=str(e), exc_info=True)
         
-        return SimpleChatResponse(
-            response=f"Error processing request: {str(e)}",
-            intent=None,
-            processing_time=processing_time,
-            path_taken="error"
-        )
+        # Return proper HTTP status codes for different error types
+        if "NoneType" in str(e) and "process_request" in str(e):
+            # Orchestrator not initialized - service unavailable
+            raise HTTPException(status_code=503, detail="Service temporarily unavailable - orchestrator not initialized")
+        elif "ConnectionError" in str(type(e).__name__):
+            # External service connection issues
+            raise HTTPException(status_code=503, detail="Service temporarily unavailable - external service connection failed")
+        else:
+            # Other server errors
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 # WebSocket chat endpoint (to be mounted in main.py)

@@ -343,7 +343,9 @@ class EconomicAnalytics(BaseModel):
     
     # Performance Metrics
     system_roi: float = Field(description="Overall system ROI")
-    top_performer: Optional[str] = Field(default=None, description="Agent ID of top performer")
+    top_performers: List[str] = Field(default_factory=list, description="Agent IDs of top performers (score > 1.0)")
+    poor_performers: List[str] = Field(default_factory=list, description="Agent IDs of poor performers (score < 0.5)")
+    average_performance: float = Field(default=0.0, description="Average performance score across all agents")
     
     @property
     def total_balance_usd(self) -> str:

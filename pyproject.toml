@@ -20,6 +20,9 @@ langchain-core = "^0.3.0"
 # Data validation and serialization
 pydantic = "^2.0.0"
 
+# Pin setuptools to avoid pkg_resources deprecation warnings
+setuptools = "<81"
+
 # Graph database clients
 pytigergraph = "^1.9.0"
 

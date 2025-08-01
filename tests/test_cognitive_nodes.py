@@ -12,7 +12,7 @@ Tests the new modular cognitive architecture components:
 
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from core.orchestrator.models import OrchestratorState, ProcessingPhase, TaskIntent
 from core.orchestrator.nodes import (
@@ -56,8 +56,8 @@ class TestSmartRouterNode:
         assert node.orchestrator == mock_orchestrator
         assert hasattr(node, 'logger')
     
-    @patch('core.orchestrator.nodes.smart_router_nodes.get_ollama_client')
-    @patch('core.orchestrator.nodes.smart_router_nodes.get_global_cache_manager')
+    @patch('clients.ollama_client.get_ollama_client')
+    @patch('core.cache_integration.get_global_cache_manager')
     async def test_simple_query_classification(self, mock_cache_manager, mock_ollama, mock_orchestrator, sample_state):
         """Test classification of simple queries."""
         # Mock cache manager
@@ -83,12 +83,26 @@ class TestSmartRouterNode:
         # Test simple query patterns
         sample_state.user_input = "Who is the CEO of Google?"
         with patch.object(node, '_get_cached_ollama_client') as mock_client:
+            # Properly configure mock response (non-async for .text attribute)
+            mock_response = Mock()
+            mock_response.text = "simple_query_task"
+            mock_cached_client = AsyncMock()
+            mock_cached_client.generate_response.return_value = mock_response
+            mock_client.return_value = mock_cached_client
+            
             result = await node.smart_triage_node(sample_state)
             assert result.routing_intent == TaskIntent.SIMPLE_QUERY_TASK
         
         # Test complex reasoning patterns  
         sample_state.user_input = "Compare Python vs JavaScript for web development"
         with patch.object(node, '_get_cached_ollama_client') as mock_client:
+            # Properly configure mock response (non-async for .text attribute)
+            mock_response = Mock()
+            mock_response.text = "complex_reasoning_task"
+            mock_cached_client = AsyncMock()
+            mock_cached_client.generate_response.return_value = mock_response
+            mock_client.return_value = mock_cached_client
+            
             result = await node.smart_triage_node(sample_state)
             assert result.routing_intent == TaskIntent.COMPLEX_REASONING_TASK
 
@@ -135,7 +149,7 @@ class TestCouncilNode:
         assert node.orchestrator == mock_orchestrator
         assert hasattr(node, 'logger')
     
-    @patch('core.orchestrator.nodes.council_nodes.get_global_cache_manager')
+    @patch('core.cache_integration.get_global_cache_manager')
     async def test_council_deliberation_structure(self, mock_cache_manager, mock_orchestrator, sample_state):
         """Test council deliberation process structure."""
         # Mock cache manager and Ollama client
@@ -219,7 +233,7 @@ class TestSupportNode:
         
         assert result.error_message is not None
     
-    @patch('core.orchestrator.nodes.support_nodes.get_global_cache_manager')
+    @patch('core.cache_integration.get_global_cache_manager')
     async def test_fast_response_node(self, mock_cache_manager, mock_orchestrator, sample_state):
         """Test fast response functionality."""
         # Mock cache manager and Ollama client
@@ -268,6 +282,13 @@ class TestProcessingNodesIntegration:
         for node, expected_phase, method_name in nodes_and_phases:
             # Mock dependencies as needed
             with patch.object(node, '_get_cached_ollama_client') as mock_client:
+                # Properly configure async mock to avoid coroutine warnings
+                mock_cached_client = AsyncMock()
+                mock_response = Mock()
+                mock_response.text = "complex_reasoning_task"  # Default fallback
+                mock_cached_client.generate_response.return_value = mock_response
+                mock_client.return_value = mock_cached_client
+                
                 if hasattr(node, method_name):
                     method = getattr(node, method_name)
                     result = await method(sample_state)

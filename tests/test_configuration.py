@@ -80,7 +80,8 @@ class TestConfiguration:
         'ENVIRONMENT': 'production',
         'SECURITY_ENABLED': 'true',
         'RATE_LIMITING_ENABLED': 'false',
-        'CORS_ALLOWED_ORIGINS': 'https://example.com,https://api.example.com'
+        'CORS_ALLOWED_ORIGINS': 'https://example.com,https://api.example.com',
+        'TIGERGRAPH_PASSWORD': 'secure_test_password_123'  # Required for production
     })
     def test_environment_overrides(self):
         """Test environment variable overrides."""
@@ -169,7 +170,10 @@ class TestConfigurationSecurity:
     
     def test_production_security_defaults(self):
         """Test that production has secure defaults."""
-        with patch.dict(os.environ, {'ENVIRONMENT': 'production'}):
+        with patch.dict(os.environ, {
+            'ENVIRONMENT': 'production',
+            'TIGERGRAPH_PASSWORD': 'secure_test_password_123'  # Required for production
+        }):
             config = Config()
             
             # Production should have security enabled

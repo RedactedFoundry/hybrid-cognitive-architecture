@@ -273,38 +273,44 @@ tigergraph_retry_config = RetryConfig(
 
 async def handle_ollama_error(error: Exception, context: Optional[Dict] = None) -> None:
     """Handle Ollama service errors with specific context."""
-    await handle_service_error("ollama", error, {
-        "context": context or {},
-        "recovery_suggestions": [
-            "Check if Ollama service is running",
-            "Verify model availability with 'ollama list'",
-            "Check CUDA memory usage"
-        ]
-    })
+    # Fixed: handle_service_error takes (error, service) - only 2 args
+    handle_service_error(error, "ollama")
+    logger.error("Ollama service error", 
+                error=str(error),
+                context=context or {},
+                recovery_suggestions=[
+                    "Check if Ollama service is running",
+                    "Verify model availability with 'ollama list'",
+                    "Check CUDA memory usage"
+                ])
 
 
 async def handle_redis_error(error: Exception, context: Optional[Dict] = None) -> None:
     """Handle Redis service errors with specific context."""
-    await handle_service_error("redis", error, {
-        "context": context or {},
-        "recovery_suggestions": [
-            "Check if Redis container is running",
-            "Verify Redis connection parameters",
-            "Check Redis memory usage"
-        ]
-    })
+    # Fixed: handle_service_error takes (error, service) - only 2 args
+    handle_service_error(error, "redis")
+    logger.error("Redis service error",
+                error=str(error),
+                context=context or {},
+                recovery_suggestions=[
+                    "Check if Redis container is running",
+                    "Verify Redis connection parameters",
+                    "Check Redis memory usage"
+                ])
 
 
 async def handle_tigergraph_error(error: Exception, context: Optional[Dict] = None) -> None:
     """Handle TigerGraph service errors with specific context."""
-    await handle_service_error("tigergraph", error, {
-        "context": context or {},
-        "recovery_suggestions": [
-            "Check if TigerGraph container is running",
-            "Verify TigerGraph setup script was run",
-            "Check TigerGraph system resources"
-        ]
-    })
+    # Fixed: handle_service_error takes (error, service) - only 2 args
+    handle_service_error(error, "tigergraph")
+    logger.error("TigerGraph service error",
+                error=str(error),
+                context=context or {},
+                recovery_suggestions=[
+                    "Check if TigerGraph container is running",
+                    "Verify TigerGraph setup script was run",
+                    "Check TigerGraph system resources"
+                ])
 
 
 # ================================
@@ -388,10 +394,10 @@ def validate_user_input(user_input: str) -> None:
     if not user_input.strip():
         raise ValidationError("user_input", "Input cannot be only whitespace")
     
-    if len(user_input) > 10000:
+    if len(user_input) > 15000:
         raise ValidationError(
             "user_input", 
-            f"Input too long: {len(user_input)} characters (max: 10,000)"
+            f"Input too long: {len(user_input)} characters (max: 15,000)"
         )
     
     # Check for suspicious patterns that might indicate injection attacks

@@ -58,10 +58,30 @@ class OllamaClient:
         self.model_mapping = CouncilModels.MODEL_MAPPING
         
     async def _get_session(self):
-        """Get or create HTTP session"""
-        if self.session is None or self.session.closed:
-            timeout = aiohttp.ClientTimeout(total=300)  # 5 minute timeout
-            self.session = aiohttp.ClientSession(timeout=timeout)
+        """Get or create HTTP session with event loop safety"""
+        try:
+            # Check if session exists and is valid for current event loop
+            if (self.session is None or 
+                self.session.closed or 
+                self.session._loop != asyncio.get_running_loop()):
+                
+                # Close old session if it exists but is from different loop
+                if self.session and not self.session.closed:
+                    try:
+                        await self.session.close()
+                    except Exception:
+                        pass  # Ignore errors when closing stale session
+                
+                # Create new session for current event loop
+                timeout = aiohttp.ClientTimeout(total=300)  # 5 minute timeout
+                self.session = aiohttp.ClientSession(timeout=timeout)
+                
+        except RuntimeError:
+            # No event loop running, create session anyway
+            if self.session is None or self.session.closed:
+                timeout = aiohttp.ClientTimeout(total=300)
+                self.session = aiohttp.ClientSession(timeout=timeout)
+                
         return self.session
     
     @error_boundary(component="ollama_health_check")
@@ -382,15 +402,36 @@ class OllamaClient:
             await handle_ollama_error(e, {"operation": "close_session"})
             # Don't re-raise - closing should be best effort
 
-# Global client instance
+# Global client instance with event loop tracking
 _ollama_client = None
+_client_event_loop = None
 
 def get_ollama_client() -> OllamaClient:
-    """Get or create global Ollama client instance"""
-    global _ollama_client
-    if _ollama_client is None:
+    """Get or create global Ollama client instance with event loop safety"""
+    global _ollama_client, _client_event_loop
+    
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No event loop running, create without loop tracking
+        current_loop = None
+    
+    # Reset client if event loop changed (fixes "Event loop is closed" errors)
+    if _client_event_loop != current_loop:
+        if _ollama_client is not None:
+            # Schedule cleanup of old client if it exists
+            try:
+                if _ollama_client.session and not _ollama_client.session.closed:
+                    # Best effort cleanup - don't await in sync function
+                    _ollama_client.session._connector = None
+            except Exception:
+                pass  # Ignore cleanup errors
+        
         _ollama_client = OllamaClient()
-        logger.info("Created new Ollama client instance")
+        _client_event_loop = current_loop
+        logger.info("Created new Ollama client instance", 
+                   event_loop_id=id(current_loop) if current_loop else None)
+    
     return _ollama_client
 
 async def close_ollama_client():

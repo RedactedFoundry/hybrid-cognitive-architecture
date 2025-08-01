@@ -59,8 +59,8 @@ class TestPromptCache:
         success = await prompt_cache.cache_response(prompt, response)
         assert success is True
         
-        # Verify setex was called
-        prompt_cache._redis.setex.assert_called_once()
+        # Verify setex was called twice (response + stats)
+        assert prompt_cache._redis.setex.call_count == 2
         
     async def test_cache_hit(self, prompt_cache):
         """Test successful cache hit."""
@@ -232,7 +232,18 @@ class TestOrchestratorCacheManager:
         
         # Mock the cache
         manager._cache = AsyncMock()
-        manager._cache.get_cache_stats.return_value = AsyncMock()
+        # Return a proper CacheStats instance instead of AsyncMock to avoid coroutine warning
+        from core.prompt_cache import CacheStats
+        manager._cache.get_cache_stats.return_value = CacheStats(
+            total_requests=10,
+            cache_hits=5,
+            cache_misses=5,
+            hit_rate=0.5,
+            avg_response_time_cached=0.1,
+            avg_response_time_uncached=1.0,
+            total_cost_saved=5.0,
+            storage_used_mb=2.5
+        )
         
         return manager
     

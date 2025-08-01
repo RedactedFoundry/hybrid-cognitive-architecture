@@ -366,23 +366,28 @@ class TestMiddlewareIntegration:
             response = await middleware.dispatch(request, mock_call_next)
             assert response.status_code == 200
     
-    def test_middleware_fail_open_behavior(self):
-        """Test that middleware fails open on errors."""
-        # This tests that the system continues to work even if middleware fails
+    def test_middleware_fail_closed_behavior(self):
+        """Test that middleware fails closed on errors (secure by default)."""
+        # This tests that the system blocks requests when validation fails
         config = ValidationConfig()
         middleware = RequestValidationMiddleware(None, config=config, enabled=True)
         
-        # Mock a validation method to raise an unexpected exception
+        # Mock the dispatch method to simulate internal validation error
         with patch.object(middleware, '_validate_headers', side_effect=Exception("Unexpected error")):
             request = MockRequest()
             
-            # Should not raise HTTPException due to fail-open design
-            try:
-                middleware._validate_headers(request)
-            except HTTPException:
-                pytest.fail("Middleware should fail open, not raise HTTPException")
-            except (ValueError, AttributeError, TypeError):
-                pass  # Expected behavior - internal error but not HTTP error
+            # Test that internal errors get converted to HTTPException (fail-closed)
+            async def test_dispatch():
+                with pytest.raises(HTTPException) as exc_info:
+                    await middleware.dispatch(request, lambda r: None)
+                
+                # Should convert internal error to 400 Bad Request
+                assert exc_info.value.status_code == 400
+                assert "Request validation failed" in str(exc_info.value.detail)
+            
+            # Run the async test
+            import asyncio
+            asyncio.run(test_dispatch())
 
 
 if __name__ == "__main__":

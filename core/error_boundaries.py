@@ -306,10 +306,62 @@ class CircuitBreaker:
     def __init__(self, name: str = "default", config: Optional[CircuitBreakerConfig] = None):
         self.name = name
         self.config = config or CircuitBreakerConfig()
+    
+    async def call(self, func, *args, **kwargs):
+        """Execute function with circuit breaker protection."""
+        try:
+            if asyncio.iscoroutinefunction(func):
+                return await func(*args, **kwargs)
+            else:
+                return func(*args, **kwargs)
+        except Exception as e:
+            logger.error("Circuit breaker triggered", name=self.name, error=str(e))
+            raise
 
 
 # Global registry stub
-error_registry = {}
+class ErrorRegistry:
+    """Simple error registry for tracking errors across the system."""
+    
+    def __init__(self):
+        self.errors = []
+        self.error_counts = {}
+    
+    def record_error(self, error: Exception, context: dict = None):
+        """Record an error with context."""
+        error_type = type(error).__name__
+        self.error_counts[error_type] = self.error_counts.get(error_type, 0) + 1
+        
+        error_record = {
+            "error_type": error_type,
+            "message": str(error),
+            "context": context or {},
+            "timestamp": datetime.now().isoformat()
+        }
+        self.errors.append(error_record)
+        
+        # Keep only last 1000 errors to prevent memory issues
+        if len(self.errors) > 1000:
+            self.errors = self.errors[-1000:]
+    
+    def get_error_summary(self, hours: int = 24):
+        """Get error summary for the last N hours."""
+        from datetime import datetime, timedelta
+        cutoff = datetime.now() - timedelta(hours=hours)
+        
+        recent_errors = [
+            err for err in self.errors 
+            if datetime.fromisoformat(err["timestamp"]) > cutoff
+        ]
+        
+        return {
+            "total_errors": len(recent_errors),
+            "error_types": {},
+            "recent_errors": recent_errors[-10:]  # Last 10 errors
+        }
+
+# Create global error registry instance
+error_registry = ErrorRegistry()
 
 
 def handle_service_error(error: Exception, service: str) -> Exception:
