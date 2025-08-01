@@ -213,3 +213,6 @@ __marimo__/
 # Large Docker images and downloads
 *.tar.gz
 models/
+
+# Third-party dependencies
+kyutai-tts/
