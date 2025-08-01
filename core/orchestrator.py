@@ -11,5 +11,21 @@ Architecture Flow:
 User Input → Pheromind Processing → Council Deliberation → KIP Execution → Response
 """
 
-# Import everything from the new modular orchestrator package
-from .orchestrator import *
+# Import specific components from the new modular orchestrator package
+from .orchestrator import (
+    UserFacingOrchestrator,
+    ProcessingPhase,
+    StreamEventType,
+    StreamEvent,
+    CouncilDecision,
+    KIPTask,
+    OrchestratorState,
+    RequestID,
+    AgentID,
+    ConversationID,
+    StateMachineBuilder,
+    ProcessingNodes,
+    StreamingProcessor,
+    ResponseSynthesizer,
+    example_usage
+)

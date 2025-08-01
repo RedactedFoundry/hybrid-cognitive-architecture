@@ -18,12 +18,16 @@ import time
 import sys
 import os
 from pathlib import Path
+import structlog
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from clients.tigervector_client import get_tigergraph_connection, test_connection
+
+# Set up structured logging  
+logger = structlog.get_logger("tigergraph_init")
 
 def wait_for_tigergraph(max_retries=20, delay=5):
     """
@@ -39,32 +43,36 @@ def wait_for_tigergraph(max_retries=20, delay=5):
     Raises:
         Exception: If TigerGraph fails to become ready after max retries
     """
-    print("🔄 Waiting for TigerGraph Community Edition to be ready...")
-    print("💡 Make sure you've run: ./scripts/setup-tigergraph.sh")
+    logger.info("Waiting for TigerGraph Community Edition to be ready")
+    logger.info("Make sure you've run: ./scripts/setup-tigergraph.sh")
     
     for attempt in range(max_retries):
-        print(f"⏳ Attempt {attempt + 1}/{max_retries}")
+        logger.info("Connection attempt", attempt=attempt + 1, max_retries=max_retries)
         
         try:
             if test_connection():
                 conn = get_tigergraph_connection()
                 if conn:
-                    print("✅ TigerGraph Community Edition is ready!")
+                    logger.info("TigerGraph Community Edition is ready")
                     return conn
         except Exception as e:
-            print(f"   Connection attempt failed: {e}")
+            logger.warning("Connection attempt failed", error=str(e))
             
         if attempt < max_retries - 1:
-            print(f"💤 Waiting {delay} seconds before retry...")
+            logger.info("Waiting before retry", delay_seconds=delay)
             time.sleep(delay)
     
     # Provide helpful troubleshooting info
-    print("❌ TigerGraph failed to become ready within the timeout period")
-    print("\n💡 Troubleshooting:")
-    print("   1. Check if container is running: docker ps | grep tigergraph")
-    print("   2. Check container logs: docker logs tigergraph")
-    print("   3. Try accessing GraphStudio: http://localhost:14240")
-    print("   4. Run setup script: ./scripts/setup-tigergraph.sh")
+    logger.error("TigerGraph failed to become ready within timeout period")
+    tigergraph_host = os.getenv("TIGERGRAPH_HOST", "http://localhost")
+    tigergraph_port = os.getenv("TIGERGRAPH_PORT", "14240")
+    logger.info("Troubleshooting steps",
+               checks=[
+                   "Check if container is running: docker ps | grep tigergraph",
+                   "Check container logs: docker logs tigergraph", 
+                   f"Try accessing GraphStudio: {tigergraph_host}:{tigergraph_port}",
+                   "Run setup script: ./scripts/setup-tigergraph.sh"
+               ])
     raise Exception("TigerGraph Community Edition failed to start after maximum retries")
 
 def initialize_database():
@@ -76,8 +84,8 @@ def initialize_database():
     Returns:
         bool: True if initialization successful, False otherwise
     """
-    print("🚀 Starting TigerGraph Community Edition initialization...")
-    print("📋 This will create the HybridAICouncil graph and load the schema")
+    logger.info("Starting TigerGraph Community Edition initialization")
+    logger.info("Creating HybridAICouncil graph and loading schema")
     
     # Wait for TigerGraph to be ready
     conn = wait_for_tigergraph()
@@ -85,78 +93,86 @@ def initialize_database():
     try:
         # Create database/graph (TigerGraph calls it a "graph")
         graph_name = "HybridAICouncil"
-        print(f"\n📊 Creating graph: {graph_name}")
+        logger.info("Creating graph", graph_name=graph_name)
         
         # Create graph using GSQL commands
         try:
-            print(f"   Creating graph via GSQL...")
+            logger.info("Creating graph via GSQL")
             create_result = conn.gsql(f"CREATE GRAPH {graph_name}()")
-            print(f"✅ Graph '{graph_name}' created successfully")
+            logger.info("Graph created successfully", graph_name=graph_name)
             if create_result:
-                print(f"   Creation result: {create_result}")
+                logger.debug("Graph creation result", result=create_result)
         except Exception as create_error:
             if "already exists" in str(create_error) or "Graph name already exists" in str(create_error):
-                print(f"ℹ️  Graph '{graph_name}' already exists")
+                logger.info("Graph already exists", graph_name=graph_name)
             else:
-                print(f"⚠️  Graph creation: {create_error}")
-                print(f"   Continuing with schema loading...")
+                logger.warning("Graph creation warning, continuing", error=str(create_error))
         
         # Switch to using the graph
-        print(f"   Switching to graph '{graph_name}'...")
+        logger.info("Switching to graph", graph_name=graph_name)
         use_result = conn.gsql(f"USE GRAPH {graph_name}")
         conn.graphname = graph_name
         if use_result:
-            print(f"   Use graph result: {use_result}")
+            logger.debug("Use graph result", result=use_result)
         
         # Load schema from file
         schema_path = Path("schemas/schema.gsql")
         if schema_path.exists():
-            print(f"\n📝 Loading schema from {schema_path}...")
+            logger.info("Loading schema from file", schema_path=str(schema_path))
             with open(schema_path, 'r') as f:
                 schema_content = f.read()
             
-            print("   Executing schema...")
+            logger.info("Executing schema")
             # Execute schema
             result = conn.gsql(schema_content)
-            print("✅ Schema loaded successfully")
+            logger.info("Schema loaded successfully")
             if result:
-                print(f"   Schema result: {result}")
+                logger.debug("Schema loading result", result=result)
         else:
-            print(f"⚠️  Schema file not found: {schema_path}")
-            print("   You can load the schema manually later from GraphStudio")
+            logger.warning("Schema file not found, manual loading required", 
+                          schema_path=str(schema_path))
         
         # Verify the graph is operational
-        print(f"\n🔍 Verifying graph '{graph_name}' is operational...")
+        logger.info("Verifying graph is operational", graph_name=graph_name)
         try:
             # Try to list the schema to verify everything loaded
             verify_result = conn.gsql("ls")
-            print("✅ Graph is operational and schema is accessible")
+            logger.info("Graph is operational and schema is accessible")
             if verify_result and len(str(verify_result)) > 10:
-                print(f"   Schema verification: Schema loaded with vertices and edges")
+                logger.info("Schema verification successful - vertices and edges loaded")
             else:
-                print(f"   Schema verification result: {verify_result}")
+                logger.debug("Schema verification result", result=verify_result)
         except Exception as verify_error:
-            print(f"⚠️  Graph verification warning: {verify_error}")
-            print(f"   The graph may still be functional")
+            logger.warning("Graph verification warning - graph may still be functional", 
+                          error=str(verify_error))
         
-        print(f"\n🎉 TigerGraph Community Edition initialization complete!")
-        print(f"🌐 Access GraphStudio: http://localhost:14240")
-        print(f"🔑 Login with: tigergraph/tigergraph")
-        print(f"📊 Graph name: {graph_name}")
-        print(f"\n📋 Manual Verification Steps:")
-        print(f"   1. Open GraphStudio at http://localhost:14240")
-        print(f"   2. Login with tigergraph/tigergraph")
-        print(f"   3. Select the '{graph_name}' graph from the dropdown")
-        print(f"   4. Navigate to 'Design Schema' to see vertices and edges")
-        print(f"   5. Check that vertices like Person, AIPersona, Preference are listed")
+        logger.info("TigerGraph Community Edition initialization complete!")
+        tigergraph_host = os.getenv("TIGERGRAPH_HOST", "http://localhost")
+        tigergraph_port = os.getenv("TIGERGRAPH_PORT", "14240")
+        graphstudio_url = f"{tigergraph_host}:{tigergraph_port}"
+        logger.info("Access information",
+                   graphstudio_url=graphstudio_url,
+                   login_credentials="tigergraph/tigergraph",
+                   graph_name=graph_name,
+                   verification_steps=[
+                       f"Open GraphStudio at {graphstudio_url}",
+                       "Login with tigergraph/tigergraph", 
+                       f"Select the '{graph_name}' graph from the dropdown",
+                       "Navigate to 'Design Schema' to see vertices and edges",
+                       "Check that vertices like Person, AIPersona, Preference are listed"
+                   ])
         return True
         
     except Exception as e:
-        print(f"\n❌ Initialization failed: {e}")
-        print("\n💡 Troubleshooting:")
-        print("   1. Ensure TigerGraph is running: docker ps | grep tigergraph")
-        print("   2. Check TigerGraph logs: docker logs tigergraph")
-        print("   3. Try manual setup via GraphStudio: http://localhost:14240")
+        logger.error("Initialization failed", error=str(e))
+        tigergraph_host = os.getenv("TIGERGRAPH_HOST", "http://localhost")
+        tigergraph_port = os.getenv("TIGERGRAPH_PORT", "14240")
+        logger.info("Troubleshooting steps",
+                   checks=[
+                       "Ensure TigerGraph is running: docker ps | grep tigergraph",
+                       "Check TigerGraph logs: docker logs tigergraph",
+                       f"Try manual setup via GraphStudio: {tigergraph_host}:{tigergraph_port}"
+                   ])
         return False
 
 if __name__ == "__main__":
@@ -164,5 +180,5 @@ if __name__ == "__main__":
         success = initialize_database()
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
-        print("\n⚠️  Initialization interrupted by user")
+        logger.warning("Initialization interrupted by user")
         sys.exit(1) 

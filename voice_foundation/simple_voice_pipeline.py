@@ -13,6 +13,10 @@ from pathlib import Path
 from typing import Optional, AsyncGenerator
 # import soundfile as sf  # Removed for mock implementation
 import numpy as np
+import structlog
+
+# Set up structured logging
+logger = structlog.get_logger("voice_pipeline")
 
 class MockSTTEngine:
     """Mock Speech-to-Text engine for testing integration"""
@@ -119,7 +123,7 @@ class MockTTSEngine:
             return True
             
         except Exception as e:
-            print(f"TTS synthesis failed: {e}")
+            logger.error("TTS synthesis failed", error=str(e))
             return False
 
 class VoiceFoundation:
@@ -134,23 +138,25 @@ class VoiceFoundation:
         
     async def initialize(self):
         """Initialize the voice foundation"""
-        print("🎤 Initializing Voice Foundation (Mock Pipeline)...")
+        logger.info("Initializing Voice Foundation Mock Pipeline")
         await asyncio.sleep(0.1)  # Simulate initialization
         self.is_initialized = True
-        print(f"✅ Voice Foundation ready: {self.stt.name} + {self.tts.name}")
+        logger.info("Voice Foundation ready", stt_engine=self.stt.name, tts_engine=self.tts.name)
         
     async def process_audio_to_text(self, audio_path: str) -> Optional[str]:
         """Convert audio file to text"""
         if not self.is_initialized:
             await self.initialize()
             
-        print(f"🎯 Processing audio: {audio_path}")
+        logger.info("Processing audio", audio_path=audio_path)
         start_time = time.time()
         
         result = await self.stt.transcribe(audio_path)
         
         latency = time.time() - start_time
-        print(f"📝 Transcription: '{result}' (⚡ {latency:.2f}s)")
+        logger.info("Transcription completed", 
+                   result=result, 
+                   latency_seconds=latency)
         return result
         
     async def process_text_to_audio(self, text: str, output_path: str) -> bool:
@@ -158,16 +164,18 @@ class VoiceFoundation:
         if not self.is_initialized:
             await self.initialize()
             
-        print(f"🗣️ Synthesizing: '{text}'")
+        logger.info("Starting TTS synthesis", text_preview=text[:50])
         start_time = time.time()
         
         success = await self.tts.synthesize(text, output_path)
         
         latency = time.time() - start_time
         if success:
-            print(f"🎵 Audio saved: {output_path} (⚡ {latency:.2f}s)")
+            logger.info("TTS synthesis successful", 
+                       output_path=output_path,
+                       latency_seconds=latency)
         else:
-            print(f"❌ Synthesis failed")
+            logger.error("TTS synthesis failed")
             
         return success
         
@@ -232,9 +240,8 @@ if __name__ == "__main__":
         )
         
         if result:
-            print(f"\n✅ Voice pipeline test successful!")
-            print(f"📝 Response: {result}")
+            logger.info("Voice pipeline test successful", response=result)
         else:
-            print(f"\n❌ Voice pipeline test failed")
+            logger.error("Voice pipeline test failed")
     
     asyncio.run(test())

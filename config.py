@@ -112,6 +112,43 @@ class Config(BaseModel):
     # Pheromind Configuration
     pheromind_ttl: int = Field(default_factory=lambda: int(os.getenv("PHEROMIND_TTL", "12")))
     
+    # Prompt Cache Configuration
+    cache_enabled: bool = Field(default_factory=lambda: os.getenv("CACHE_ENABLED", "true").lower() == "true")
+    cache_ttl_hours: int = Field(default_factory=lambda: int(os.getenv("CACHE_TTL_HOURS", "24")))
+    cache_max_prompt_length: int = Field(default_factory=lambda: int(os.getenv("CACHE_MAX_PROMPT_LENGTH", "5000")))
+    cache_similarity_threshold: float = Field(default_factory=lambda: float(os.getenv("CACHE_SIMILARITY_THRESHOLD", "0.85")))
+    cache_max_size_mb: int = Field(default_factory=lambda: int(os.getenv("CACHE_MAX_SIZE_MB", "100")))
+    cache_cleanup_interval_hours: int = Field(default_factory=lambda: int(os.getenv("CACHE_CLEANUP_INTERVAL_HOURS", "6")))
+    cache_cost_per_token: float = Field(default_factory=lambda: float(os.getenv("CACHE_COST_PER_TOKEN", "0.0001")))
+    
+    # Security Configuration
+    security_enabled: bool = Field(default_factory=lambda: os.getenv("SECURITY_ENABLED", "true").lower() == "true")
+    rate_limiting_enabled: bool = Field(default_factory=lambda: os.getenv("RATE_LIMITING_ENABLED", "true").lower() == "true")
+    security_headers_enabled: bool = Field(default_factory=lambda: os.getenv("SECURITY_HEADERS_ENABLED", "true").lower() == "true")
+    request_validation_enabled: bool = Field(default_factory=lambda: os.getenv("REQUEST_VALIDATION_ENABLED", "true").lower() == "true")
+    
+    # Rate Limiting Configuration
+    rate_limit_requests_per_minute: int = Field(default_factory=lambda: int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "100")))
+    rate_limit_requests_per_hour: int = Field(default_factory=lambda: int(os.getenv("RATE_LIMIT_REQUESTS_PER_HOUR", "1000")))
+    rate_limit_chat_per_minute: int = Field(default_factory=lambda: int(os.getenv("RATE_LIMIT_CHAT_PER_MINUTE", "10")))
+    rate_limit_voice_per_minute: int = Field(default_factory=lambda: int(os.getenv("RATE_LIMIT_VOICE_PER_MINUTE", "5")))
+    rate_limit_websocket_connections: int = Field(default_factory=lambda: int(os.getenv("RATE_LIMIT_WEBSOCKET_CONNECTIONS", "5")))
+    
+    # CORS Configuration
+    cors_allowed_origins: str = Field(default_factory=lambda: os.getenv("CORS_ALLOWED_ORIGINS", "*"))
+    cors_allow_credentials: bool = Field(default_factory=lambda: os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true")
+    cors_allowed_methods: str = Field(default_factory=lambda: os.getenv("CORS_ALLOWED_METHODS", "GET,POST,PUT,DELETE,OPTIONS"))
+    cors_allowed_headers: str = Field(default_factory=lambda: os.getenv("CORS_ALLOWED_HEADERS", "*"))
+    
+    # Security Headers Configuration
+    csp_policy: str = Field(default_factory=lambda: os.getenv("CSP_POLICY", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:"))
+    hsts_max_age: int = Field(default_factory=lambda: int(os.getenv("HSTS_MAX_AGE", "31536000")))
+    
+    # Request Validation Configuration  
+    max_request_size_mb: int = Field(default_factory=lambda: int(os.getenv("MAX_REQUEST_SIZE_MB", "10")))
+    max_json_size_mb: int = Field(default_factory=lambda: int(os.getenv("MAX_JSON_SIZE_MB", "1")))
+    max_query_params: int = Field(default_factory=lambda: int(os.getenv("MAX_QUERY_PARAMS", "50")))
+    
     @property
     def redis_url(self) -> str:
         """Get Redis connection URL."""

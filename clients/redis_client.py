@@ -1,6 +1,11 @@
 # clients/redis_client.py
-import redis
 import os
+
+import redis
+import structlog
+
+# Set up structured logging
+logger = structlog.get_logger("redis_client")
 
 def get_redis_connection():
     """
@@ -21,8 +26,8 @@ def get_redis_connection():
 
         # Ping the server to confirm the connection is alive.
         r.ping()
-        print("Successfully connected to Redis.")
+        logger.info("Successfully connected to Redis", host=host, port=port)
         return r
     except redis.exceptions.ConnectionError as e:
-        print(f"Error connecting to Redis: {e}")
+        logger.error("Error connecting to Redis", error=str(e), host=host, port=port)
         return None 

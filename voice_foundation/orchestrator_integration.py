@@ -12,6 +12,7 @@ import uuid
 from pathlib import Path
 from typing import Optional, AsyncGenerator, Dict, Any
 from datetime import datetime, timezone
+import structlog
 
 # Import orchestrator components
 import sys
@@ -23,6 +24,9 @@ from core.orchestrator import UserFacingOrchestrator
 # Import voice foundation
 from voice_foundation.production_voice_engines import create_voice_foundation
 from voice_foundation.simple_voice_pipeline import VoiceFoundation
+
+# Set up structured logging
+logger = structlog.get_logger("voice_orchestrator")
 
 class VoiceOrchestrator:
     """
@@ -38,13 +42,13 @@ class VoiceOrchestrator:
         
     async def initialize(self):
         """Initialize both voice foundation and orchestrator"""
-        print("🎤 Initializing Voice-Enabled Orchestrator...")
+        logger.info("Initializing Voice-Enabled Orchestrator")
         
         # Create and initialize voice foundation
         if self.use_production:
-            print("🚀 Using SOTA Production Voice Pipeline (2025)")
+            logger.info("Using SOTA Production Voice Pipeline (2025)")
         else:
-            print("🔧 Using Mock Voice Pipeline for testing")
+            logger.info("Using Mock Voice Pipeline for testing")
             
         self.voice_foundation = await create_voice_foundation(
             use_production=self.use_production,
@@ -55,7 +59,7 @@ class VoiceOrchestrator:
         # Note: orchestrator initialization is handled in __post_init__
         
         self.is_initialized = True
-        print("✅ Voice-Enabled Orchestrator ready!")
+        logger.info("Voice-Enabled Orchestrator ready")
         
     async def process_voice_request(
         self, 
@@ -82,11 +86,11 @@ class VoiceOrchestrator:
         request_id = str(uuid.uuid4())
         start_time = datetime.now(timezone.utc)
         
-        print(f"🎯 Processing voice request {request_id}")
+        logger.info("Processing voice request", request_id=request_id)
         
         try:
             # Step 1: Speech to Text
-            print("📝 Step 1: Speech to Text")
+            logger.info("Starting Step 1: Speech to Text", request_id=request_id)
             transcription = await self.voice_foundation.process_audio_to_text(audio_input_path)
             
             if not transcription:
@@ -98,7 +102,9 @@ class VoiceOrchestrator:
                 }
             
             # Step 2: Process through cognitive orchestrator  
-            print("🧠 Step 2: Cognitive Processing")
+            logger.info("Starting Step 2: Cognitive Processing", 
+                       request_id=request_id,
+                       transcription=transcription[:50])
             # Note: user_id not yet supported by orchestrator but kept in voice API for future enhancement
             orchestrator_response = await self.orchestrator.process_request(
                 user_input=transcription,
@@ -117,7 +123,9 @@ class VoiceOrchestrator:
             response_text = orchestrator_response.final_response
             
             # Step 3: Text to Speech
-            print("🔊 Step 3: Text to Speech")
+            logger.info("Starting Step 3: Text to Speech", 
+                       request_id=request_id,
+                       response_text=response_text[:50])
             tts_success = await self.voice_foundation.process_text_to_audio(response_text, audio_output_path)
             
             if not tts_success:
@@ -322,7 +330,7 @@ async def stream_voice_conversation(
 if __name__ == "__main__":
     # Test the integration
     async def test_integration():
-        print("🧪 Testing Voice-Orchestrator Integration...")
+        logger.info("Testing Voice-Orchestrator Integration")
         
         # Create test audio if needed
         if not Path("voice_foundation/test_audio.wav").exists():
@@ -335,14 +343,12 @@ if __name__ == "__main__":
             "voice_foundation/integration_test_output.wav"
         )
         
-        print(f"\n🎯 Integration Test Results:")
-        print(f"Success: {result['success']}")
-        if result['success']:
-            print(f"Transcription: '{result['transcription']}'")
-            print(f"Response: '{result['response_text']}'")
-            print(f"Processing Time: {result['processing_time']:.2f}s")
-            print(f"Audio Output: {result['audio_output_path']}")
-        else:
-            print(f"Error: {result.get('error', 'Unknown error')}")
+        logger.info("Integration Test Results",
+                   success=result['success'],
+                   transcription=result.get('transcription', ''),
+                   response_text=result.get('response_text', ''),
+                   processing_time=result.get('processing_time', 0),
+                   audio_output_path=result.get('audio_output_path', ''),
+                   error=result.get('error', ''))
     
     asyncio.run(test_integration())

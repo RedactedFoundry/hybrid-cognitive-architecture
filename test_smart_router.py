@@ -7,6 +7,7 @@ import asyncio
 import requests
 import time
 import json
+import os
 
 async def test_smart_router():
     """Test the Smart Router with different types of queries"""
@@ -50,9 +51,10 @@ async def test_smart_router():
         print(f"Expected Intent: {case['expected_intent']}")
         
         try:
-            # Make request to the API
+            # Make request to the API - configurable via environment
+            api_base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
             response = requests.post(
-                "http://localhost:8000/api/chat",
+                f"{api_base_url}/api/chat",
                 json={
                     "message": case["query"],
                     "conversation_id": f"test_{i}"

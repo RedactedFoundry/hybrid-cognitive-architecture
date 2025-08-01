@@ -16,7 +16,7 @@ from typing import AsyncGenerator, Optional, TYPE_CHECKING
 import structlog
 
 from config.models import ANALYTICAL_MODEL, CREATIVE_MODEL, COORDINATOR_MODEL
-from clients.ollama_client import get_ollama_client
+from utils.client_utils import get_cached_ollama_client
 
 from .models import (
     StreamEvent, StreamEventType, ProcessingPhase
@@ -145,7 +145,7 @@ class StreamingProcessor:
         """
         try:
             # Initialize Ollama client
-            ollama_client = get_ollama_client()
+            ollama_client = await get_cached_ollama_client("StreamingProcessor")
             
             if not await ollama_client.health_check():
                 raise Exception("Ollama service is not available")

@@ -9,6 +9,7 @@ Usage:
     python scripts/test_setup.py
 """
 
+import os
 import sys
 import requests
 import time
@@ -115,8 +116,13 @@ def test_ollama():
     print("\n🔍 Testing Ollama...")
     
     try:
+        # Get Ollama URL from environment
+        ollama_host = os.getenv("OLLAMA_HOST", "localhost")
+        ollama_port = os.getenv("OLLAMA_PORT", "11434")
+        ollama_url = f"http://{ollama_host}:{ollama_port}"
+        
         # Test health endpoint
-        health_response = requests.get("http://localhost:11434/api/tags", timeout=10)
+        health_response = requests.get(f"{ollama_url}/api/tags", timeout=10)
         if health_response.status_code == 200:
             print("✅ Ollama health check: PASSED")
         else:
@@ -125,7 +131,7 @@ def test_ollama():
             return False
         
         # Test models endpoint
-        models_response = requests.get("http://localhost:11434/api/tags", timeout=10)
+        models_response = requests.get(f"{ollama_url}/api/tags", timeout=10)
         if models_response.status_code == 200:
             models = models_response.json()
             model_count = len(models.get('models', []))
@@ -317,7 +323,9 @@ def main():
     if passed == total:
         print("🎉 ALL TESTS PASSED - Your Hybrid AI Council is ready!")
         print("\n📚 Next steps:")
-        print("   1. Access TigerGraph GraphStudio: http://localhost:14240")
+        tigergraph_host = os.getenv("TIGERGRAPH_HOST", "http://localhost")
+        tigergraph_port = os.getenv("TIGERGRAPH_PORT", "14240")
+        print(f"   1. Access TigerGraph GraphStudio: {tigergraph_host}:{tigergraph_port}")
         print("   2. Explore the knowledge graph schema")
         print("   3. Start developing your AI Council application")
         sys.exit(0)

@@ -16,7 +16,7 @@ import structlog
 from langchain_core.messages import AIMessage
 
 from config.models import COORDINATOR_MODEL
-from clients.ollama_client import get_ollama_client
+from utils.client_utils import get_cached_ollama_client
 
 from .models import OrchestratorState, ProcessingPhase
 
@@ -64,8 +64,8 @@ class ResponseSynthesizer:
         state.update_phase(ProcessingPhase.RESPONSE_SYNTHESIS)
         
         try:
-            # Initialize Ollama client for synthesis
-            ollama_client = get_ollama_client()
+            # Initialize Ollama client for synthesis with caching
+            ollama_client = await get_cached_ollama_client("ResponseSynthesizer")
             
             # Gather insights from all 3 layers
             synthesis_context = await self._gather_synthesis_context(state)

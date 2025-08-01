@@ -13,26 +13,8 @@ from typing import List, Optional, Dict, Any
 import pyTigerGraph as tg
 import structlog
 
-# Import Config from the root config module
-try:
-    import sys
-    import os
-    # Get path to root config.py
-    current_dir = os.path.dirname(__file__)
-    parent_dir = os.path.dirname(os.path.dirname(current_dir))
-    config_path = os.path.join(parent_dir, 'config.py')
-    
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("config_module", config_path)
-    config_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(config_module)
-    Config = config_module.Config
-except ImportError:
-    # Fallback for testing
-    class Config:
-        def __init__(self, **kwargs):
-            for k, v in kwargs.items():
-                setattr(self, k, v)
+# Clean config import
+from config import Config
 from clients.tigervector_client import get_tigergraph_connection
 from .models import KIPAgent, AgentStatus, AgentFunction, ToolCapability, KIPAnalytics
 

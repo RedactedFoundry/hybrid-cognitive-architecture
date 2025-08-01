@@ -16,28 +16,8 @@ The KIP Layer consists of:
 from contextlib import asynccontextmanager
 from typing import Optional
 
-# Import Config from the root config module
-try:
-    import sys
-    import os
-    # First try importing from the parent directory
-    current_dir = os.path.dirname(__file__)
-    parent_dir = os.path.dirname(os.path.dirname(current_dir))
-    config_path = os.path.join(parent_dir, 'config.py')
-    
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("config_module", config_path)
-    config_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(config_module)
-    Config = config_module.Config
-except ImportError:
-    # Fallback approach
-    from typing import Any
-    class Config:
-        """Fallback Config class for testing"""
-        def __init__(self, **kwargs):
-            for k, v in kwargs.items():
-                setattr(self, k, v)
+# Clean config import
+from config import Config
 
 # Import all models and data structures
 from .models import (

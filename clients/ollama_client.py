@@ -4,13 +4,15 @@ Provides OpenAI-compatible API interface to Ollama models
 """
 
 import asyncio
-import aiohttp
-import importlib.util
 import json
 import logging
-from typing import Optional, Dict, Any, AsyncGenerator
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, AsyncGenerator, Dict, Optional
+
+import aiohttp
+
+from config import Config
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -29,16 +31,6 @@ class OllamaClient:
     """Client for Ollama using OpenAI-compatible API"""
     
     def __init__(self, base_url: Optional[str] = None):
-        # Import configuration
-        import sys
-        import os
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        config_path = os.path.join(project_root, 'config.py')
-        spec = importlib.util.spec_from_file_location("config", config_path)
-        config_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(config_module)
-        Config = config_module.Config
-        
         # Use provided URL or get from configuration
         if base_url is None:
             config = Config()

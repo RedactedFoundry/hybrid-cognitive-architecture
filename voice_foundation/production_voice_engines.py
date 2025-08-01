@@ -15,6 +15,7 @@ import torchaudio
 from pathlib import Path
 from typing import Optional
 import logging
+import structlog
 
 # For Parakeet-TDT via HuggingFace (primary method)
 try:
@@ -28,6 +29,9 @@ from faster_whisper import WhisperModel
 
 # Silero VAD for voice activity detection
 import silero_vad
+
+# Set up structured logging
+logger = structlog.get_logger("voice_engines")
 
 # For Kyutai TTS
 import subprocess
@@ -58,7 +62,7 @@ class ProductionSTTEngine:
         # Try NeMo first for Parakeet-TDT
         if self.force_parakeet:
             try:
-                print("🚀 Loading NVIDIA Parakeet-TDT-0.6B-v2 (SOTA STT)...")
+                logger.info("Loading NVIDIA Parakeet-TDT-0.6B-v2 SOTA STT model")
                 start_time = time.time()
                 
                 # Import NeMo and load Parakeet (using working configuration)
@@ -68,23 +72,23 @@ class ProductionSTTEngine:
                 )
                 
                 load_time = time.time() - start_time
-                print(f"✅ NVIDIA Parakeet-TDT-0.6B-v2 loaded in {load_time:.2f}s")
-                print(f"🏆 SOTA Performance: 6.05% WER, RTF 3380")
+                logger.info("NVIDIA Parakeet-TDT-0.6B-v2 loaded successfully", 
+                          load_time_seconds=load_time, 
+                          wer_percentage=6.05, 
+                          rtf=3380)
                 
                 self.use_nemo = True
                 self.is_initialized = True
                 return
                 
             except ImportError as e:
-                print(f"⚠️ NeMo not available: {e}")
-                print("🔄 Falling back to Faster-Whisper Large-v3-Turbo...")
+                logger.warning("NeMo not available, falling back to Faster-Whisper", error=str(e))
             except Exception as e:
-                print(f"⚠️ Parakeet-TDT failed to load: {e}")
-                print("🔄 Falling back to Faster-Whisper Large-v3-Turbo...")
+                logger.warning("Parakeet-TDT failed to load, falling back to Faster-Whisper", error=str(e))
         
         # Fallback to Faster-Whisper
         try:
-            print("🚀 Loading Faster-Whisper Large-v3-Turbo (SOTA Fallback)...")
+            logger.info("Loading Faster-Whisper Large-v3-Turbo as SOTA fallback")
             start_time = time.time()
             
             self.fallback_model = WhisperModel(
@@ -94,15 +98,15 @@ class ProductionSTTEngine:
             )
             
             load_time = time.time() - start_time
-            print(f"✅ Faster-Whisper Large-v3-Turbo loaded in {load_time:.2f}s")
-            print(f"💡 High-quality fallback: proven SOTA performance")
+            logger.info("Faster-Whisper Large-v3-Turbo loaded successfully", 
+                       load_time_seconds=load_time, 
+                       quality="high-quality-fallback")
             
             self.name = "Faster-Whisper Large-v3-Turbo (SOTA Fallback)"
             self.is_initialized = True
             
         except Exception as e:
-            logger.error(f"Failed to load any STT engine: {e}")
-            print(f"❌ STT initialization completely failed: {e}")
+            logger.error("STT initialization completely failed", error=str(e))
             raise
     
     async def transcribe(self, audio_path: str) -> Optional[str]:
@@ -124,7 +128,10 @@ class ProductionSTTEngine:
             
             processing_time = time.time() - start_time
             engine_name = "Parakeet-TDT" if self.use_nemo else "Faster-Whisper"
-            print(f"🎯 {engine_name} STT completed in {processing_time:.3f}s: '{str(transcription)[:50]}...'")
+            logger.info("STT transcription completed", 
+                       engine=engine_name,
+                       processing_time_seconds=processing_time,
+                       transcription_preview=str(transcription)[:50])
             
             return str(transcription).strip()
             
@@ -155,7 +162,7 @@ class ProductionTTSEngine:
             return
             
         try:
-            print("🚀 Loading REAL Kyutai TTS-1.6B (SOTA Real-Time TTS)...")
+            logger.info("Loading REAL Kyutai TTS-1.6B SOTA model")
             start_time = time.time()
             
             # Use official Kyutai implementation via uvx
@@ -169,7 +176,7 @@ class ProductionTTSEngine:
                 script_path = os.path.join(kyutai_path, "scripts", "tts_pytorch.py")
                 
                 if os.path.exists(script_path):
-                    print(f"📦 Found Kyutai TTS at: {kyutai_path}")
+                    logger.info("Found Kyutai TTS installation", path=kyutai_path)
                     
                     # Test if uvx and moshi work
                     test_result = subprocess.run([
@@ -182,17 +189,19 @@ class ProductionTTSEngine:
                         self.kyutai_script_path = script_path
                         self.use_real_kyutai = True
                         self.use_edge_fallback = False
-                        print("🎉 SUCCESS! REAL Kyutai TTS-1.6B loaded via official scripts!")
-                        print("🏆 Performance: 2.82% WER (beats ElevenLabs 4.05%)")
-                        print("⚡ Latency: 220ms, Real-time streaming")
+                        logger.info("REAL Kyutai TTS-1.6B loaded successfully via official scripts",
+                                   wer_percentage=2.82,
+                                   performance_comparison="beats ElevenLabs 4.05%",
+                                   latency_ms=220,
+                                   real_time_streaming=True)
                     else:
                         raise Exception(f"Kyutai test failed: {test_result.stderr}")
                 else:
                     raise Exception(f"Kyutai scripts not found at {script_path}")
                 
             except Exception as kyutai_error:
-                print(f"⚠️ Kyutai TTS-1.6B failed: {kyutai_error}")
-                print("🔄 Falling back to Edge-TTS (high-quality alternative)...")
+                logger.warning("Kyutai TTS-1.6B failed, falling back to Edge-TTS", 
+                              error=str(kyutai_error))
                 
                 # Fallback to Edge-TTS
                 try:
@@ -200,19 +209,20 @@ class ProductionTTSEngine:
                     self.edge_tts = edge_tts
                     self.use_edge_fallback = True
                     self.use_real_kyutai = False
-                    print("✅ Edge-TTS (high-quality fallback) loaded successfully")
+                    logger.info("Edge-TTS high-quality fallback loaded successfully")
                 except ImportError:
-                    print("❌ Edge-TTS also not available")
+                    logger.error("No TTS engine available - both Kyutai and Edge-TTS failed")
                     raise ImportError("No TTS engine available")
             
             load_time = time.time() - start_time
             engine_name = "REAL Kyutai TTS-1.6B" if self.use_real_kyutai else "Edge-TTS"
-            print(f"✅ {engine_name} loaded in {load_time:.2f}s")
+            logger.info("TTS engine initialized successfully", 
+                       engine=engine_name, 
+                       load_time_seconds=load_time)
             self.is_initialized = True
             
         except Exception as e:
-            logger.error(f"Failed to load TTS: {e}")
-            print(f"❌ TTS initialization failed: {e}")
+            logger.error("TTS initialization failed", error=str(e))
             raise
     
     async def synthesize(self, text: str, output_path: str) -> bool:
@@ -225,7 +235,8 @@ class ProductionTTSEngine:
             
             if self.use_real_kyutai and self.kyutai_script_path:
                 # Use the REAL Kyutai TTS-1.6B model via official script
-                print(f"🎯 Using REAL Kyutai TTS-1.6B: '{text[:30]}...'")
+                logger.info("Starting REAL Kyutai TTS-1.6B synthesis", 
+                           text_preview=text[:30])
                 
                 import subprocess
                 import tempfile
@@ -247,9 +258,9 @@ class ProductionTTSEngine:
                     ], capture_output=True, text=True, cwd=kyutai_dir, timeout=120)
                     
                     if result.returncode == 0:
-                        print("🎉 REAL Kyutai TTS-1.6B synthesis successful!")
+                        logger.info("REAL Kyutai TTS-1.6B synthesis successful")
                     else:
-                        print(f"⚠️ Kyutai TTS failed: {result.stderr}")
+                        logger.warning("Kyutai TTS synthesis failed", stderr=result.stderr)
                         raise Exception(f"Kyutai synthesis failed: {result.stderr}")
                         
                 finally:
@@ -259,19 +270,22 @@ class ProductionTTSEngine:
                 
             elif self.use_edge_fallback and self.edge_tts:
                 # Use edge-tts fallback
-                print(f"🔊 Using Edge-TTS fallback: '{text[:30]}...'")
+                logger.info("Using Edge-TTS fallback for synthesis", 
+                           text_preview=text[:30])
                 voice = "en-US-AriaNeural"  # High-quality female voice
                 
                 communicate = self.edge_tts.Communicate(text, voice)
                 await communicate.save(output_path)
                 
             else:
-                print("❌ No TTS engine available")
+                logger.error("No TTS engine available for synthesis")
                 return False
             
             synthesis_time = time.time() - start_time
             engine_name = "REAL Kyutai TTS-1.6B" if self.use_real_kyutai else "Edge-TTS"
-            print(f"🔊 {engine_name} completed in {synthesis_time:.3f}s")
+            logger.info("TTS synthesis completed successfully",
+                       engine=engine_name,
+                       synthesis_time_seconds=synthesis_time)
             return True
             
         except Exception as e:
@@ -295,10 +309,10 @@ class SileroVAD:
             return
             
         try:
-            print("🎤 Loading Silero VAD v3...")
+            logger.info("Loading Silero VAD v3")
             self.model = silero_vad.load_silero_vad()
             self.is_initialized = True
-            print("✅ VAD ready")
+            logger.info("Silero VAD v3 ready")
             
         except Exception as e:
             logger.error(f"VAD initialization failed: {e}")
@@ -344,7 +358,7 @@ class ProductionVoiceFoundation:
         
     async def initialize(self):
         """Initialize all voice components"""
-        print("🎤 Initializing Production Voice Foundation (SOTA Pipeline 2025)...")
+        logger.info("Initializing Production Voice Foundation SOTA Pipeline 2025")
         start_time = time.time()
         
         # Initialize all components
@@ -356,19 +370,20 @@ class ProductionVoiceFoundation:
         
         self.is_initialized = True
         init_time = time.time() - start_time
-        print(f"✅ Production Voice Foundation ready in {init_time:.2f}s")
-        print(f"   📊 STT: {self.stt.name}")
-        print(f"   🔊 TTS: {self.tts.name}")
-        print(f"   🎤 VAD: {self.vad.name}")
-        print(f"   💰 Cost: $0/hour (local processing)")
-        print(f"   🏆 Performance: SOTA-level accuracy with proven reliability")
+        logger.info("Production Voice Foundation ready",
+                   init_time_seconds=init_time,
+                   stt_engine=self.stt.name,
+                   tts_engine=self.tts.name, 
+                   vad_engine=self.vad.name,
+                   cost_per_hour=0,
+                   performance_level="SOTA")
         
     async def process_audio_to_text(self, audio_path: str) -> Optional[str]:
         """Convert audio file to text using SOTA STT"""
         if not self.is_initialized:
             await self.initialize()
             
-        print(f"🎯 Processing audio with SOTA STT: {audio_path}")
+        logger.info("Processing audio with SOTA STT", audio_path=audio_path)
         return await self.stt.transcribe(audio_path)
         
     async def process_text_to_audio(self, text: str, output_path: str) -> bool:
@@ -376,7 +391,7 @@ class ProductionVoiceFoundation:
         if not self.is_initialized:
             await self.initialize()
             
-        print(f"🔊 Synthesizing with SOTA TTS: '{text[:30]}...'")
+        logger.info("Synthesizing with SOTA TTS", text_preview=text[:30])
         return await self.tts.synthesize(text, output_path)
 
 # Compatibility function for existing code

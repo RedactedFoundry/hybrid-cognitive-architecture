@@ -17,8 +17,13 @@ Default Configuration:
 - Graph: HybridAICouncil
 """
 
-import pyTigerGraph as tg
 import os
+
+import pyTigerGraph as tg
+import structlog
+
+# Set up structured logging
+logger = structlog.get_logger("tigervector_client")
 
 def get_tigergraph_connection(graph_name="HybridAICouncil"):
     """
@@ -46,7 +51,7 @@ def get_tigergraph_connection(graph_name="HybridAICouncil"):
         username = os.getenv("TIGERGRAPH_USERNAME", "tigergraph")
         password = os.getenv("TIGERGRAPH_PASSWORD", "tigergraph")
 
-        print(f"Connecting to TigerGraph at {host}:{port} as {username}")
+        logger.info("Connecting to TigerGraph", host=host, port=port, username=username)
         
         # Community Edition uses the same port for REST API and GraphStudio
         conn = tg.TigerGraphConnection(
@@ -61,17 +66,22 @@ def get_tigergraph_connection(graph_name="HybridAICouncil"):
         # Test the connection by getting a token
         try:
             conn.getToken()
-            print(f"✅ Successfully connected to TigerGraph graph: {graph_name}")
+            logger.info("Successfully connected to TigerGraph graph", graph_name=graph_name)
             return conn
         except Exception as token_error:
-            print(f"⚠️  Connected to TigerGraph but token generation failed: {token_error}")
-            print(f"   This may be normal if the graph '{graph_name}' doesn't exist yet.")
+            logger.warning("Connected to TigerGraph but token generation failed", 
+                          error=str(token_error), 
+                          graph_name=graph_name,
+                          note="This may be normal if the graph doesn't exist yet")
             return conn
             
     except Exception as e:
-        print(f"❌ Error connecting to TigerGraph: {e}")
-        print(f"💡 Make sure TigerGraph is running: docker ps | grep tigergraph")
-        print(f"💡 Or run: ./scripts/setup-tigergraph.sh")
+        logger.error("Error connecting to TigerGraph", 
+                    error=str(e),
+                    troubleshooting_steps=[
+                        "Check if TigerGraph is running: docker ps | grep tigergraph",
+                        "Run setup script: ./scripts/setup-tigergraph.sh"
+                    ])
         return None
 
 def test_connection():
@@ -81,20 +91,20 @@ def test_connection():
     Returns:
         bool: True if connection successful, False otherwise
     """
-    print("🔍 Testing TigerGraph Community Edition connection...")
+    logger.info("Testing TigerGraph Community Edition connection")
     conn = get_tigergraph_connection()
     
     if conn:
         try:
             # Try to get server info
             info = conn.getVersion()
-            print(f"✅ TigerGraph version: {info}")
+            logger.info("TigerGraph version retrieved", version=info)
             return True
         except Exception as e:
-            print(f"⚠️  Connected but limited functionality: {e}")
+            logger.warning("Connected but limited functionality", error=str(e))
             return True  # Connection exists, just limited
     else:
-        print("❌ Connection failed")
+        logger.error("TigerGraph connection failed")
         return False
 
 if __name__ == "__main__":
