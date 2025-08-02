@@ -37,8 +37,6 @@ logger = structlog.get_logger("voice_engines")
 import subprocess
 import os
 
-logger = logging.getLogger(__name__)
-
 class ProductionSTTEngine:
     """
     NVIDIA Parakeet-TDT-0.6B-v2 STT Engine (SOTA)
@@ -215,7 +213,9 @@ class ProductionTTSEngine:
                     raise ImportError("No TTS engine available")
             
             load_time = time.time() - start_time
-            engine_name = "REAL Kyutai TTS-1.6B" if self.use_real_kyutai else "Edge-TTS"
+            engine_name = "REAL Kyutai TTS-1.6B" if self.use_real_kyutai else "Edge-TTS High-Quality Fallback"
+            # Update the name to reflect the actual engine being used
+            self.name = engine_name
             logger.info("TTS engine initialized successfully", 
                        engine=engine_name, 
                        load_time_seconds=load_time)

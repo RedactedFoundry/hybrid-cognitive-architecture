@@ -134,6 +134,10 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning:langgraph.*",
+    "ignore:.*config_type.*deprecated.*:DeprecationWarning"
+]
 markers = [
     "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
     "chaos: marks tests as chaos engineering tests",
