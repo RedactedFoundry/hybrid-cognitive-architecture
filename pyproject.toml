@@ -136,7 +136,9 @@ python_functions = ["test_*"]
 asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning:langgraph.*",
-    "ignore:.*config_type.*deprecated.*:DeprecationWarning"
+    "ignore:.*config_type.*deprecated.*:DeprecationWarning",
+    "ignore:pkg_resources is deprecated.*:UserWarning",
+    "ignore:.*pkg_resources.declare_namespace.*:DeprecationWarning"
 ]
 markers = [
     "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
