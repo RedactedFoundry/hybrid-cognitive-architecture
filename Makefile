@@ -37,6 +37,22 @@ dev-setup: deps services init-db
 	@echo "✅ Development environment ready!"
 	@echo "🚀 Run 'make verify' to test everything works"
 
+# 🚀 MASTER STARTUP - ONE COMMAND FOR EVERYTHING
+start-all:
+	@echo "🚀 Starting complete Hybrid AI Council system..."
+	@echo "   (equivalent to: python scripts/start_everything.py)"
+	python scripts/start_everything.py
+
+start-all-with-api:
+	@echo "🚀 Starting complete system with API server..."
+	@echo "   (equivalent to: python scripts/start_everything.py --with-api)"
+	python scripts/start_everything.py --with-api
+
+quick-start:
+	@echo "⚡ Quick start (no verification)..."
+	@echo "   (equivalent to: python scripts/start_everything.py --skip-verify)"
+	python scripts/start_everything.py --skip-verify
+
 deps:
 	@echo "📦 Installing Python dependencies..."
 	poetry install
@@ -49,7 +65,7 @@ services:
 init-db:
 	@echo "🗄️ Initializing TigerGraph database..."
 	sleep 10  # Wait for TigerGraph to be ready
-	python scripts/init_tigergraph.py
+	python scripts/smart_tigergraph_init.py
 
 # Testing & Verification
 test-all:

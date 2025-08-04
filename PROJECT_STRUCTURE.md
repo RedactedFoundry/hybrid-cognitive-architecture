@@ -26,20 +26,28 @@ hybrid-cognitive-architecture/
 ## 📋 Project Management & Documentation
 
 ```
-├── CHAT_SESSION_HANDOFF.md           # Session continuity & status
-├── SYSTEM_PERFECTION_ROADMAP.md      # Testing journey & milestones  
-├── CODE_CLEANUP_AUDIT.md             # Code quality tracking
-├── code_audit_progress.md            # Audit progress log
-├── code-audit-prompt.md              # Audit methodology
-├── REFACTORING_HANDOFF_V2.md         # Refactoring documentation
-├── SMART_ROUTER_HANDOFF.md           # Smart router implementation
-├── ENVIRONMENT_VARIABLES.md          # Environment setup guide
-├── SECURITY.md                       # Security policies
+├── archive/                           # ✅ Completed work & documentation
+│   ├── CHAT_SESSION_HANDOFF.md       # [ARCHIVED] Session continuity
+│   ├── code_audit_progress.md        # [ARCHIVED] Audit tracking  
+│   ├── CODE_CLEANUP_AUDIT.md         # [ARCHIVED] Cleanup results
+│   ├── REFACTORING_HANDOFF_V2.md     # [ARCHIVED] Refactoring docs
+│   └── SMART_ROUTER_HANDOFF.md       # [ARCHIVED] Router implementation
+├── code-audit-prompt.md              # ✅ Code quality audit template (REUSABLE)
 ├── LICENSE                           # Project license
 ├── README.md                         # Main project documentation
 ├── PROJECT_STRUCTURE.md              # 👈 THIS FILE
 ├── CURSOR_BASH_SETUP.md              # Cursor terminal setup
-├── SYSTEM_VERIFICATION_GUIDE.md      # Complete system testing guide
+├── docs/                             # ✅ Project documentation (ORGANIZED)
+│   ├── ENVIRONMENT_VARIABLES.md     # Environment configuration guide
+│   ├── SECURITY.md                  # Security guidelines & best practices
+│   ├── SYSTEM_VERIFICATION_GUIDE.md # Complete system testing guide  
+│   ├── SYSTEM_PERFECTION_ROADMAP.md # System improvement roadmap
+│   ├── dev-log-Hybrid-AI-Council.md # Development progress log
+│   ├── MIDDLEWARE_FIX_DOCUMENTATION.md # Technical middleware fixes
+│   ├── CODE_PATTERNS.md             # Standard patterns & conventions
+│   ├── INTEGRATION_MAP.md           # Component interaction flows
+│   ├── DEBUGGING_GUIDE.md           # Project-specific troubleshooting
+│   └── [... other blueprint docs ...]
 ├── CURRENT_ISSUES.md                 # ✅ Active priorities & blockers tracker
 ├── verify_system.py                  # Quick system health check
 ├── quick_db_check.py                 # Database inspection tool
@@ -189,7 +197,13 @@ tests/
 ├── test_economic_behaviors.py         # Economic agent behavior tests
 ├── test_prompt_cache.py               # Prompt caching tests
 ├── test_chaos.py                      # Chaos engineering tests
-└── test_production_readiness.py       # 🎯 Load testing & production validation
+├── test_production_readiness.py       # 🎯 Load testing & production validation
+├── run_tests.py                      # ✅ Main test runner (MOVED HERE)
+├── test_setup.py                     # ✅ Setup validation suite (MOVED HERE)
+└── voice_foundation/                 # ✅ Voice component tests (ORGANIZED)
+    ├── test_kyutai_tts_only.py       # Kyutai TTS isolated testing
+    ├── test_pipeline.py              # Voice pipeline testing  
+    └── test_production_voice.py      # Production voice testing
 ```
 
 ## 🎤 Voice Foundation (SOTA Voice Integration)
@@ -202,7 +216,7 @@ voice_foundation/
 ├── orchestrator_integration.py        # Voice-orchestrator integration
 ├── production_voice_engines.py        # Production voice pipelines
 ├── simple_voice_pipeline.py           # Basic voice pipeline
-├── test_*.py                         # Voice testing scripts
+├── integration_test_output.wav        # Test output files
 ├── *.wav                             # Test audio files
 ├── outputs/                          # Generated audio outputs
 │   └── *.wav                         # Voice synthesis outputs
@@ -213,7 +227,7 @@ voice_foundation/
 ## 📡 WebSocket Handlers (Real-time Communication)
 
 ```
-websockets/
+websockets/                            # ✅ RENAMED from websocket_handlers/
 ├── __init__.py
 ├── handlers.py                        # Base WebSocket handlers
 ├── chat_handlers.py                   # Chat-specific WebSocket logic
@@ -284,6 +298,15 @@ kyutai-tts/                           # External TTS model (gitignored)
 
 | File | Action | Reason | Session |
 |------|--------|---------|---------|
+| `archive/` | ✅ Created | Organized completed handoff & audit documentation | Current |
+| `tests/run_tests.py` | 🔧 Moved | Moved test runner to tests/ directory | Current |
+| `tests/test_setup.py` | 🔧 Moved | Moved setup validation to tests/ directory | Current |
+| `tests/voice_foundation/` | 🔧 Moved | Organized voice tests into subdirectory | Current |
+| `websockets/` | 🔧 Renamed | Renamed websocket_handlers → websockets for consistency | Current |
+| `docs/ENVIRONMENT_VARIABLES.md` | 🔧 Moved | Moved to docs/ directory for better organization | Current |
+| `docs/SECURITY.md` | 🔧 Moved | Moved to docs/ directory for better organization | Current |
+| `docs/SYSTEM_VERIFICATION_GUIDE.md` | 🔧 Moved | Moved to docs/ directory for better organization | Current |
+| `docs/SYSTEM_PERFECTION_ROADMAP.md` | 🔧 Moved | Moved to docs/ directory for better organization | Current |
 | `MULTI_MODEL_TEST_GUIDE.md` | ✅ Created | Complete guide for testing multi-model orchestration across cognitive layers | Current |
 | `docs/MIDDLEWARE_FIX_DOCUMENTATION.md` | ✅ Created | Detailed fix for rate limiting middleware Redis timeout issues | Current |
 | `middleware/rate_limiting.py` | 🔄 Updated | Added 50ms Redis timeout protection and graceful degradation | Current |

@@ -1,0 +1,21 @@
+[1mdiff --git a/pyproject.toml b/pyproject.toml[m
+[1mindex 861e5e1..e2543e5 100644[m
+[1m--- a/pyproject.toml[m
+[1m+++ b/pyproject.toml[m
+[36m@@ -10,7 +10,7 @@[m [mpackages = [{include = "core"}, {include = "clients"}, {include = "schemas"}][m
+ python = "^3.11"[m
+ # Core web framework and async support[m
+ fastapi = "^0.104.0"[m
+[31m-uvicorn = {extras = ["standard"], version = "^0.24.0"}[m
+[32m+[m[32muvicorn = {version = "0.24.0", extras = ["standard"]}[m
+ aiohttp = "^3.9.0"[m
+ [m
+ # LangGraph and related AI frameworks[m
+[36m@@ -51,6 +51,7 @@[m [mpython-multipart = "^0.0.20"[m
+ torch = "^2.7.1"[m
+ torchaudio = "^2.7.1"[m
+ silero-vad = "^5.1.2"[m
+[32m+[m[32mwebsockets = "11.0.2"[m
+ [m
+ [tool.poetry.group.dev.dependencies][m
+ # Testing framework[m
