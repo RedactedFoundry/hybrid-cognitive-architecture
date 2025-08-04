@@ -24,8 +24,13 @@ try:
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
-# Faster-Whisper as backup STT
-from faster_whisper import WhisperModel
+# Faster-Whisper as backup STT (optional)
+try:
+    from faster_whisper import WhisperModel
+    FASTER_WHISPER_AVAILABLE = True
+except ImportError:
+    FASTER_WHISPER_AVAILABLE = False
+    WhisperModel = None
 
 # Silero VAD for voice activity detection
 import silero_vad
@@ -84,33 +89,46 @@ class ProductionSTTEngine:
             except Exception as e:
                 logger.warning("Parakeet-TDT failed to load, falling back to Faster-Whisper", error=str(e))
         
-        # Fallback to Faster-Whisper
-        try:
-            logger.info("Loading Faster-Whisper Large-v3-Turbo as SOTA fallback")
-            start_time = time.time()
+        # Fallback to Faster-Whisper (if available)
+        if FASTER_WHISPER_AVAILABLE:
+            try:
+                logger.info("Loading Faster-Whisper Large-v3-Turbo as SOTA fallback")
+                start_time = time.time()
+                
+                self.fallback_model = WhisperModel(
+                    "large-v3-turbo", 
+                    device="auto",  # Will use GPU if available
+                    compute_type="auto"  # Will optimize automatically
+                )
             
-            self.fallback_model = WhisperModel(
-                "large-v3-turbo", 
-                device="auto",  # Will use GPU if available
-                compute_type="auto"  # Will optimize automatically
-            )
-            
-            load_time = time.time() - start_time
-            logger.info("Faster-Whisper Large-v3-Turbo loaded successfully", 
-                       load_time_seconds=load_time, 
-                       quality="high-quality-fallback")
-            
-            self.name = "Faster-Whisper Large-v3-Turbo (SOTA Fallback)"
-            self.is_initialized = True
-            
-        except Exception as e:
-            logger.error("STT initialization completely failed", error=str(e))
-            raise
+                load_time = time.time() - start_time
+                logger.info("Faster-Whisper Large-v3-Turbo loaded successfully", 
+                           load_time_seconds=load_time, 
+                           quality="high-quality-fallback")
+                
+                self.name = "Faster-Whisper Large-v3-Turbo (SOTA Fallback)"
+                self.is_initialized = True
+                
+            except Exception as e:
+                logger.error("Faster-Whisper fallback failed", error=str(e))
+                raise
+        else:
+            # No STT engines available
+            logger.warning("No STT engines available - voice input will not work")
+            logger.info("Install dependencies: pip install transformers torch nemo-toolkit[all] faster-whisper")
+            self.name = "No STT Engine Available"
+            self.fallback_model = None
+            self.is_initialized = True  # Allow system to start without STT
     
     async def transcribe(self, audio_path: str) -> Optional[str]:
         """Transcribe audio to text using Parakeet-TDT or Faster-Whisper"""
         if not self.is_initialized:
             await self.initialize()
+        
+        # Check if any STT engine is available
+        if not self.model and not self.fallback_model:
+            logger.warning("No STT engines available for transcription")
+            return None
         
         try:
             start_time = time.time()
@@ -119,10 +137,13 @@ class ProductionSTTEngine:
                 # Use NVIDIA Parakeet-TDT (SOTA)
                 output = self.model.transcribe([audio_path])
                 transcription = output[0]
-            else:
+            elif self.fallback_model:
                 # Use Faster-Whisper fallback
                 segments, _ = self.fallback_model.transcribe(audio_path)
                 transcription = " ".join([segment.text for segment in segments])
+            else:
+                logger.error("No working STT engine available")
+                return None
             
             processing_time = time.time() - start_time
             engine_name = "Parakeet-TDT" if self.use_nemo else "Faster-Whisper"

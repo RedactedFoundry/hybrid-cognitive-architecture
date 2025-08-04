@@ -14,28 +14,87 @@ This verification covers:
 
 ---
 
+## 📄 Environment Configuration Files
+
+**Quick Answer to "Do I need both .env and ENVIRONMENT_VARIABLES.md?"**
+
+- **`.env`** - Your actual local environment variables (used by the system)
+- **`ENVIRONMENT_VARIABLES.md`** - Documentation reference (explains all possible variables)
+
+You only **need** the `.env` file for the system to work. The `.md` file is just documentation.
+
+```bash
+# Check if you have a .env file
+if [ -f .env ]; then
+    echo "✅ .env file exists (GOOD - system will use these values)"
+    echo "📄 Contents:"
+    grep -v "^#" .env | grep -v "^$" | head -5
+else
+    echo "ℹ️  No .env file (OK - system will use defaults from config.py)"
+    echo "💡 You can create one with: touch .env"
+fi
+```
+
+---
+
 ## 📋 Pre-Verification Checklist
 
 ### 1. Services Status Check
 ```bash
 # Check all containers are running
 docker ps
-
 # Should see:
 # - hybrid-cognitive-architecture-redis-1 (port 6379)
 # - tigergraph (port 14240)
 
 # Check Ollama is running
 ollama list
-# Should show: mistral-council, llama3.2, qwen2.5-coder models
+# Should show: mistral-council, qwen3, deekseek-coder models
+
+# Quick status summary
+echo "🔍 Service Status Summary:"
+redis_running=$(docker ps --filter "name=redis" --format "{{.Names}}" | grep redis)
+tigergraph_running=$(docker ps --filter "name=tigergraph" --format "{{.Names}}" | grep tigergraph)
+
+if [ -n "$redis_running" ]; then
+    echo "   ✅ Redis: Running"
+else
+    echo "   ❌ Redis: Not running"
+fi
+
+if [ -n "$tigergraph_running" ]; then
+    echo "   ✅ TigerGraph: Running"
+else
+    echo "   ❌ TigerGraph: Not running"
+fi
+
+if ollama list >/dev/null 2>&1; then
+    models_count=$(ollama list | wc -l)
+    if [ $models_count -gt 1 ]; then
+        echo "   ✅ Ollama: Running with models"
+    else
+        echo "   ⚠️  Ollama: Running but no models"
+    fi
+else
+    echo "   ❌ Ollama: Not running or not accessible"
+fi
 ```
 
 ### 2. Environment Variables
 ```bash
 # Verify required environment variables
-echo $REDIS_HOST        # Should be: localhost
-echo $TIGERGRAPH_HOST   # Should be: http://localhost
-echo $ENVIRONMENT       # Should be: development
+echo "REDIS_HOST: ${REDIS_HOST:-localhost (default)}"
+echo "TIGERGRAPH_HOST: ${TIGERGRAPH_HOST:-http://localhost (default)}"
+echo "ENVIRONMENT: ${ENVIRONMENT:-development (default)}"
+
+# Alternative: Check if .env file exists
+if [ -f .env ]; then
+    echo "✅ .env file found"
+    echo "📄 Contents:"
+    grep -v "^#" .env | head -10
+else
+    echo "ℹ️  No .env file - using defaults from config.py"
+fi
 ```
 
 ---
@@ -43,44 +102,157 @@ echo $ENVIRONMENT       # Should be: development
 ## 🔍 Database Verification
 
 ### Redis Verification
+
+#### Step 1: Basic Connectivity
 ```bash
 # Check Redis connectivity and data
 docker exec hybrid-cognitive-architecture-redis-1 redis-cli ping
 # Expected: PONG
 
-# Check existing keys
-docker exec hybrid-cognitive-architecture-redis-1 redis-cli KEYS "*"
+# Check Redis info and memory usage
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli INFO memory | grep "used_memory_human"
+# Expected: used_memory_human:X.XXM
+```
+
+#### Step 2: Check Existing Data
+```bash
+# Count total keys
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli DBSIZE
+# Expected: (integer) X (where X > 0 after system use)
+
+# Check existing keys by pattern
+echo "Total keys: $(docker exec hybrid-cognitive-architecture-redis-1 redis-cli KEYS "*" | wc -l)"
 # Expected: Various keys including rate_limit:*, prompt_cache:*, pheromind:*
 
+# View key patterns
+echo "Key patterns:"
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli KEYS "*" | cut -d: -f1 | sort | uniq -c | sort -nr
+```
+
+#### Step 3: Inspect Actual Data
+```bash
+# View rate limiting data (if any requests made)
+echo "Rate limit keys:"
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli KEYS "rate_limit:*"
+
+# View actual rate limit values
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli KEYS "rate_limit:*" | while read key; do
+    if [ -n "$key" ]; then
+        value=$(docker exec hybrid-cognitive-architecture-redis-1 redis-cli GET "$key")
+        echo "$key = $value"
+    fi
+done
+
+# View pheromind signals (after system use)
+echo "Pheromind keys:"
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli KEYS "pheromind:*"
+
+# View prompt cache (after system use)  
+echo "Prompt cache keys:"
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli KEYS "prompt_cache:*"
+
 # Test Redis operations
-docker exec hybrid-cognitive-architecture-redis-1 redis-cli SET test_key "verification_value"
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli SET test_key "verification_value" EX 60
 docker exec hybrid-cognitive-architecture-redis-1 redis-cli GET test_key
 # Expected: "verification_value"
+```
 
-# Check Redis info
-docker exec hybrid-cognitive-architecture-redis-1 redis-cli INFO memory | findstr used_memory_human
+#### Step 4: Monitor Redis in Real-Time (Optional)
+```bash
+# Monitor Redis commands in real-time (run in separate terminal)
+docker exec hybrid-cognitive-architecture-redis-1 redis-cli MONITOR
+# Then use your system and watch Redis activity live
 ```
 
 ### TigerGraph Verification
+
+#### Step 1: Initialize TigerGraph (First Time Setup)
+```bash
+# IMPORTANT: Initialize the graph schema first (required for first use)
+python scripts/init_tigergraph.py
+
+# Expected output:
+# ✅ TigerGraph connection successful
+# ✅ Graph 'HybridAICouncil' created
+# ✅ Schema installed successfully
+# ✅ Data source created
+```
+
+#### Step 2: Verify TigerGraph Connection
 ```bash
 # Check TigerGraph status
 curl http://localhost:14240/api/ping
 # Expected: {"error":false,"message":"pong","results":"hello"}
 
-# Verify graph exists
-python -c "
-from clients.tigervector_client import get_tigergraph_connection
-conn = get_tigergraph_connection()
-print('TigerGraph connection:', conn)
-print('Graph info:', conn.getSchema())
-"
+# Check TigerGraph login and credentials
+curl -X POST http://localhost:14240/gsqlserver/gsql/login -d "tigergraph"
+# Expected: {"error":false,"message":"Login successfully",...}
+```
 
-# Check vertices count (after running system)
+#### Step 3: Verify Graph Schema and Data
+```python
+# Run this Python script to check schema and data
+python -c "
+from clients.tigervector_client import get_tigergraph_connection
+try:
+    conn = get_tigergraph_connection()
+    print('✅ TigerGraph Connection: SUCCESS')
+    
+    # Check schema
+    schema = conn.getSchema()
+    print(f'📊 Graph Schema: {len(schema.vertexTypes)} vertex types, {len(schema.edgeTypes)} edge types')
+    
+    # Check vertex counts
+    vertices = conn.getVertexTypes()
+    for vertex_type in vertices:
+        count = conn.getVertexCount(vertex_type)
+        print(f'   {vertex_type}: {count} vertices')
+    
+    # Check edge counts  
+    edges = conn.getEdgeTypes()
+    for edge_type in edges:
+        count = conn.getEdgeCount(edge_type)
+        print(f'   {edge_type}: {count} edges')
+        
+except Exception as e:
+    print(f'❌ TigerGraph Error: {e}')
+    print('💡 Try running: python scripts/init_tigergraph.py')
+"
+```
+
+#### Step 4: View Actual Data in TigerGraph
+```python
+# See real conversation data stored in TigerGraph
 python -c "
 from clients.tigervector_client import get_tigergraph_connection
 conn = get_tigergraph_connection()
-print('Total vertices:', conn.getVertexCount('*'))
+
+# Get recent conversations
+conversations = conn.getVertices('Conversation', limit=5)
+print('📝 Recent Conversations:')
+for conv in conversations:
+    print(f'   ID: {conv[0]}, Data: {conv[1]}')
+
+# Get knowledge nodes
+knowledge = conn.getVertices('KnowledgeNode', limit=5)
+print('🧠 Recent Knowledge Nodes:')
+for node in knowledge:
+    print(f'   ID: {node[0]}, Content: {node[1].get(\"content\", \"N/A\")[:100]}...')
 "
+```
+
+#### Credentials Configuration (Optional)
+```bash
+# Default TigerGraph credentials are tigergraph/tigergraph
+# To change them (optional), update your .env file:
+echo 'TIGERGRAPH_USERNAME=your_username' >> .env
+echo 'TIGERGRAPH_PASSWORD=your_password' >> .env
+
+# Then restart TigerGraph:
+docker restart tigergraph
+# Wait 30 seconds for startup
+sleep 30
+python scripts/init_tigergraph.py  # Re-initialize with new credentials
 ```
 
 ---
@@ -361,6 +533,51 @@ After running through this guide, you should have verified:
 - [ ] Redis contains pheromind signals, cache data, rate limits
 - [ ] TigerGraph contains conversation graphs, knowledge nodes
 - [ ] Real data being written during system operation
+
+### 🔬 Live Data Inspection
+
+**To actually see data being written, follow these steps:**
+
+1. **Start the system**: `uvicorn main:app --host 0.0.0.0 --port 8000`
+2. **Open two terminal windows** for monitoring:
+   
+   **Terminal 1 - Monitor Redis:**
+   ```bash
+   docker exec hybrid-cognitive-architecture-redis-1 redis-cli MONITOR
+   ```
+   
+   **Terminal 2 - Monitor TigerGraph (optional):**
+   ```bash
+   # Run this periodically to see vertex counts increase
+   python -c "
+   from clients.tigervector_client import get_tigergraph_connection
+   conn = get_tigergraph_connection()
+   print(f'Conversations: {conn.getVertexCount(\"Conversation\")}')
+   print(f'Knowledge Nodes: {conn.getVertexCount(\"KnowledgeNode\")}')
+   "
+   ```
+
+3. **Use the system** - Make some requests:
+   ```bash
+   # Simple API request
+   curl -X POST "http://localhost:8000/api/chat" -H "Content-Type: application/json" -d '{"message": "Hello, test data storage", "conversation_id": "data_test_123"}'
+   
+   # Or use the web interface at http://localhost:8000
+   ```
+
+4. **Verify data was written:**
+   ```bash
+   # Check Redis keys increased
+   docker exec hybrid-cognitive-architecture-redis-1 redis-cli DBSIZE
+   
+   # Check TigerGraph vertices increased  
+   python -c "
+   from clients.tigervector_client import get_tigergraph_connection
+   conn = get_tigergraph_connection()
+   conversations = conn.getVertices('Conversation', limit=3)
+   print('Latest conversations:', conversations)
+   "
+   ```
 
 ---
 

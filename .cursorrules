@@ -82,6 +82,14 @@ Reference the 6-week plan to provide context-aware help:
 * **Pre-commit Hooks:** Recommend setting up pre-commit hooks with black, ruff, and pytest to automate code quality and testing before commits.  
 * **Remove Dead Code:** If a file, helper, or abstraction becomes unused after a refactor, recommend its prompt deletion to keep the codebase lean.
 
+### **📁 Project Structure Maintenance (MANDATORY)**
+
+* **ALWAYS update PROJECT_STRUCTURE.md:** When creating, modifying, or removing ANY file, immediately update the living documentation.
+* **Update order:** 1) Update PROJECT_STRUCTURE.md FIRST, 2) Then create/modify the actual file.
+* **Recently Modified section:** Add entries to the "Recently Modified" table with action (✅ Created | 🔄 Updated | ❌ Removed | 🔧 Refactored), reason, and session marker.
+* **File purpose:** Always include a brief description of what the file does and how it fits into the overall architecture.
+* **Cross-references:** Note any dependencies or relationships to other files when adding new ones.
+
 ### **Code Quality Gates (CRITICAL - Enforce Always)**
 
 These rules prevent the exact issues that required emergency cleanup:

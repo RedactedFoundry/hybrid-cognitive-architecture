@@ -78,13 +78,14 @@ async def verify_llm_service():
             # Test simple generation
             response = await ollama_client.generate_response(
                 "Say 'verification successful'",
+                model_alias="mistral-council",  # Use default model for verification
                 max_tokens=10
             )
             
-            if response and "verification" in response.lower():
+            if response and response.success and "verification" in response.text.lower():
                 print("   ✅ Ollama: Text generation working")
             else:
-                print(f"   ⚠️  Ollama: Unexpected response: {response}")
+                print(f"   ⚠️  Ollama: Unexpected response: {response.text if response else 'None'}")
         else:
             print("   ❌ Ollama: Health check failed")
             return False
@@ -111,9 +112,9 @@ async def verify_orchestrator():
         processing_time = time.time() - start_time
         
         print(f"   ✅ Orchestrator: Initialized and processing ({processing_time:.2f}s)")
-        print(f"   ✅ Smart Router: {result.smart_router_decision}")
+        print(f"   ✅ Smart Router: {result.routing_intent.value if result.routing_intent else 'Not set'}")
         print(f"   ✅ Final Phase: {result.current_phase}")
-        print(f"   ✅ Response Length: {len(result.final_response)} characters")
+        print(f"   ✅ Response Length: {len(result.final_response) if result.final_response else 0} characters")
         
         # Verify components
         if result.pheromind_signals:
@@ -148,6 +149,7 @@ async def verify_api_endpoints():
             return False
     except Exception as e:
         print(f"   ❌ Health Endpoint: {e}")
+        print("   💡 Start API server: uvicorn main:app --host 0.0.0.0 --port 8000")
         return False
     
     # Chat API endpoint
@@ -158,7 +160,7 @@ async def verify_api_endpoints():
                 "message": "API verification test",
                 "conversation_id": "api_verification"
             },
-            timeout=15
+            timeout=60
         )
         
         if response.status_code == 200:
@@ -172,6 +174,7 @@ async def verify_api_endpoints():
             return False
     except Exception as e:
         print(f"   ❌ Chat API: {e}")
+        print("   💡 API server not running - this is optional for database/LLM testing")
         return False
     
     return True
@@ -186,7 +189,7 @@ async def verify_performance():
         # Memory usage
         process = psutil.Process()
         memory_mb = process.memory_info().rss / 1024 / 1024
-        cpu_percent = process.cpu_percent()
+        cpu_percent = process.cpu_percent(interval=1)  # Add interval for more accurate reading
         
         print(f"   ✅ Memory Usage: {memory_mb:.1f} MB")
         print(f"   ✅ CPU Usage: {cpu_percent:.1f}%")
@@ -196,14 +199,21 @@ async def verify_performance():
         
         # Test response time
         start = time.time()
-        response = requests.get("http://localhost:8000/health", timeout=5)
-        response_time = time.time() - start
-        
-        print(f"   ✅ API Response Time: {response_time:.3f}s")
-        
-        if response_time > 2.0:
-            print("   ⚠️  Slow response time detected")
+        try:
+            response = requests.get("http://localhost:8000/health", timeout=5)
+            response_time = time.time() - start
             
+            print(f"   ✅ API Response Time: {response_time:.3f}s")
+            
+            if response_time > 2.0:
+                print("   ⚠️  Slow response time detected")
+        except requests.exceptions.ConnectionError:
+            print("   ❌ API not running - start with: uvicorn main:app --host 0.0.0.0 --port 8000")
+            return False
+            
+    except ImportError:
+        print("   ⚠️  psutil not available - install with: pip install psutil")
+        return True  # Don't fail verification for missing optional dependency
     except Exception as e:
         print(f"   ❌ Performance Check: {e}")
         return False

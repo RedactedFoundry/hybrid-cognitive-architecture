@@ -13,7 +13,7 @@ import structlog
 
 from core.orchestrator import UserFacingOrchestrator
 from models.api_models import SimpleChatRequest, SimpleChatResponse
-from websockets.chat_handlers import websocket_chat_handler
+from websocket_handlers.chat_handlers import websocket_chat_handler
 
 # Set up logger
 logger = structlog.get_logger(__name__)
@@ -29,6 +29,10 @@ def set_orchestrator(orch: UserFacingOrchestrator):
 # Create router for chat endpoints
 router = APIRouter(prefix="/api", tags=["chat"])
 
+@router.get("/test")
+async def test_endpoint():
+    """Minimal test endpoint to verify REST routing works."""
+    return {"status": "REST endpoint working", "timestamp": datetime.now(timezone.utc)}
 
 @router.post("/chat", response_model=SimpleChatResponse)
 async def simple_chat(request: SimpleChatRequest):
@@ -41,7 +45,11 @@ async def simple_chat(request: SimpleChatRequest):
     start_time = datetime.now(timezone.utc)
     
     try:
-        # Process through the Smart Router orchestrator
+        # Validate orchestrator availability
+        if orchestrator is None:
+            raise HTTPException(status_code=503, detail="Orchestrator not initialized - server still starting up")
+        
+        # Process through the Smart Router orchestrator  
         orchestrator_result = await orchestrator.process_request(
             user_input=request.message,
             conversation_id=request.conversation_id

@@ -187,7 +187,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         return most_restrictive_result
     
     async def _check_single_limit(self, client_ip: str, endpoint: str, limit: RateLimit) -> RateLimitResult:
-        """Check a single rate limit using Redis."""
+        """Check a single rate limit using Redis with proper timeout handling."""
         
         # Create Redis key
         key_parts = [self.redis_key_prefix, limit.scope, client_ip]
@@ -208,28 +208,57 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                     reset_time=int(time.time()) + limit.window_seconds
                 )
             
-            # Use Redis pipeline for atomic operations
-            pipe = redis_client.pipeline()
-            current_time = int(time.time())
-            window_start = current_time - limit.window_seconds
+            # Redis operations with timeout protection
+            def execute_redis_pipeline():
+                """Execute Redis pipeline operations synchronously."""
+                pipe = redis_client.pipeline()
+                current_time = int(time.time())
+                window_start = current_time - limit.window_seconds
+                
+                # Remove old entries outside the time window
+                pipe.zremrangebyscore(redis_key, 0, window_start)
+                
+                # Count current requests in window  
+                pipe.zcard(redis_key)
+                
+                # Add current request
+                pipe.zadd(redis_key, {str(current_time): current_time})
+                
+                # Set expiry on the key
+                pipe.expire(redis_key, limit.window_seconds + 1)
+                
+                # Execute pipeline
+                return pipe.execute()
             
-            # Remove old entries outside the time window
-            pipe.zremrangebyscore(redis_key, 0, window_start)
-            
-            # Count current requests in window
-            pipe.zcard(redis_key)
-            
-            # Add current request
-            pipe.zadd(redis_key, {str(current_time): current_time})
-            
-            # Set expiry on the key
-            pipe.expire(redis_key, limit.window_seconds + 1)
-            
-            # Execute pipeline
-            results = pipe.execute()
-            current_requests = results[1]  # Count after removing old entries
+            # Execute Redis operations with 50ms timeout
+            try:
+                import asyncio
+                results = await asyncio.wait_for(
+                    asyncio.get_event_loop().run_in_executor(None, execute_redis_pipeline),
+                    timeout=0.05  # 50ms timeout to prevent hanging
+                )
+                current_requests = results[1]  # Count after removing old entries
+            except asyncio.TimeoutError:
+                self.logger.warning("Redis pipeline timeout - allowing request (fail open)", 
+                                  redis_key=redis_key, timeout_ms=50)
+                return RateLimitResult(
+                    allowed=True,
+                    requests_made=0,
+                    requests_remaining=limit.requests,
+                    reset_time=int(time.time()) + limit.window_seconds
+                )
+            except Exception as redis_exec_error:
+                self.logger.warning("Redis pipeline execution error - allowing request (fail open)", 
+                                  error=str(redis_exec_error), redis_key=redis_key)
+                return RateLimitResult(
+                    allowed=True,
+                    requests_made=0, 
+                    requests_remaining=limit.requests,
+                    reset_time=int(time.time()) + limit.window_seconds
+                )
             
             # Check if limit exceeded
+            current_time = int(time.time())
             allowed = current_requests < limit.requests
             requests_remaining = max(0, limit.requests - current_requests - 1)
             reset_time = current_time + limit.window_seconds

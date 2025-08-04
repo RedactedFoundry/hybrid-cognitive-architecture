@@ -49,7 +49,7 @@ from middleware import (
 from middleware.rate_limiting import RateLimit
 from middleware.request_validation import ValidationConfig
 from middleware.security_headers import ProductionSecurityConfig, SecurityConfig
-from voice_foundation.orchestrator_integration import voice_orchestrator
+from voice_foundation.orchestrator_integration import get_voice_orchestrator
 from utils.websocket_utils import active_connections
 
 # Global state
@@ -122,7 +122,8 @@ async def lifespan(app: FastAPI):
     
     # Initialize voice foundation
     try:
-        await voice_orchestrator.initialize()
+        voice_orch = get_voice_orchestrator()
+        await voice_orch.initialize()
         logger.info("Voice Foundation initialized successfully")
     except Exception as e:
         logger.warning("Voice Foundation initialization failed - voice endpoints may not work", error=str(e))
@@ -206,8 +207,11 @@ if config.request_validation_enabled:
         config=validation_config,
         enabled=True
     )
+    logger.info("Request validation middleware enabled")
+else:
+    logger.info("Request validation middleware disabled in configuration")
 
-# Add rate limiting middleware (should be one of the first middleware)
+# Add rate limiting middleware with timeout fixes
 if config.rate_limiting_enabled:
     rate_limits = [
         RateLimit(requests=config.rate_limit_requests_per_minute, window_seconds=60, scope="ip_per_minute"),
@@ -221,6 +225,9 @@ if config.rate_limiting_enabled:
         enabled=True,
         default_limits=rate_limits
     )
+    logger.info("Rate limiting middleware enabled with timeout protection")
+else:
+    logger.info("Rate limiting middleware disabled in configuration")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")

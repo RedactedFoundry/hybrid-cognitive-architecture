@@ -9,8 +9,8 @@ This file has been split into focused modules for better maintainability:
 This file remains for backward compatibility during transition.
 Import from the specific modules instead:
 
-  from websockets.voice_handlers import handle_voice_input
-  from websockets.chat_handlers import websocket_chat_handler, process_with_streaming, handle_conversation_interrupt
+  from websocket_handlers.voice_handlers import handle_voice_input
+from websocket_handlers.chat_handlers import websocket_chat_handler, process_with_streaming, handle_conversation_interrupt
 """
 
 # Re-export functions for backward compatibility

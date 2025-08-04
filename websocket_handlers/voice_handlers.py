@@ -23,7 +23,7 @@ from core.error_boundaries import (
     ProcessingError, 
     error_boundary
 )
-from voice_foundation.orchestrator_integration import voice_orchestrator
+from voice_foundation.orchestrator_integration import get_voice_orchestrator
 
 # Set up logger
 logger = structlog.get_logger(__name__)
@@ -56,7 +56,8 @@ async def handle_voice_input(websocket: WebSocket, data: dict, conversation_id: 
         os.rename(temp_audio_path, wav_path)
         
         # Process through voice foundation (STT)
-        transcription = await voice_orchestrator.voice_foundation.process_audio_to_text(wav_path)
+        voice_orch = get_voice_orchestrator()
+        transcription = await voice_orch.voice_foundation.process_audio_to_text(wav_path)
         
         if transcription:
             # Send transcription to client
@@ -72,7 +73,7 @@ async def handle_voice_input(websocket: WebSocket, data: dict, conversation_id: 
             })
             
             # Process through orchestrator
-            orchestrator_result = await voice_orchestrator.orchestrator.process_request(
+            orchestrator_result = await voice_orch.orchestrator.process_request(
                 user_input=transcription,
                 conversation_id=conversation_id
             )
@@ -82,7 +83,7 @@ async def handle_voice_input(websocket: WebSocket, data: dict, conversation_id: 
                 response_audio_path = f"voice_foundation/outputs/realtime_{uuid.uuid4()}.wav"
                 os.makedirs("voice_foundation/outputs", exist_ok=True)
                 
-                tts_success = await voice_orchestrator.voice_foundation.process_text_to_audio(
+                tts_success = await voice_orch.voice_foundation.process_text_to_audio(
                     orchestrator_result.final_response,
                     response_audio_path
                 )

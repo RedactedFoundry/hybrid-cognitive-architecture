@@ -86,11 +86,16 @@ action_task = Commands that start with action verbs:
 exploratory_task = Find patterns or connections:
 - "Find connections", "Explore", "Brainstorm", "Discover patterns"
 
-complex_reasoning_task = ONLY when explicitly asking for analysis:
+complex_reasoning_task = Analysis, explanation, or multi-faceted questions:
 - "Pros and cons"
 - "Compare X vs Y" 
 - "Should I choose..."
 - "Analyze the impact of..."
+- "How does X help/affect/impact Y?"
+- "What are the ways/methods/approaches to..."
+- "In depth ways/detailed explanation of..."
+- "Why is/does/would..."
+- Questions asking for multiple points or detailed explanations
 
 DEFAULT: If uncertain, choose simple_query_task
 
@@ -131,12 +136,24 @@ YOUR CLASSIFICATION (ONE WORD ONLY):"""
                                  "ceo of" in user_input_lower or 
                                  "time is it" in user_input_lower or
                                  "weather" in user_input_lower or
-                                 user_input_lower.startswith(("define", "explain")))
+                                 user_input_lower.startswith(("define",)))
             
-            # Complex reasoning indicators
+            # Complex reasoning indicators - expanded to catch more analytical questions
             complex_rule_match = (user_input_lower.startswith(("compare", "should i", "pros and cons", "analyze")) or
                                  "vs " in user_input_lower or
-                                 "versus" in user_input_lower)
+                                 "versus" in user_input_lower or
+                                 "how does" in user_input_lower or
+                                 "how will" in user_input_lower or
+                                 "why does" in user_input_lower or
+                                 "why is" in user_input_lower or
+                                 "why would" in user_input_lower or
+                                 "in depth" in user_input_lower or
+                                 "detailed" in user_input_lower or
+                                 "ways to" in user_input_lower or
+                                 "methods to" in user_input_lower or
+                                 "approaches to" in user_input_lower or
+                                 ("help" in user_input_lower and len(user_input_lower.split()) > 5) or
+                                 ("impact" in user_input_lower and len(user_input_lower.split()) > 4))
             
             # Exploratory task indicators  
             exploratory_rule_match = (user_input_lower.startswith(("find connections", "discover patterns", "explore", "brainstorm")) or

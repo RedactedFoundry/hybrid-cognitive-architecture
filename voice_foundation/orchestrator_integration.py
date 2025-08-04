@@ -302,7 +302,15 @@ class VoiceOrchestrator:
             }
 
 # Global voice orchestrator instance - using SOTA production models (2025)
-voice_orchestrator = VoiceOrchestrator(use_production=True, force_parakeet=True)
+# Created lazily to avoid blocking imports
+voice_orchestrator = None
+
+def get_voice_orchestrator():
+    """Get or create the global voice orchestrator instance."""
+    global voice_orchestrator
+    if voice_orchestrator is None:
+        voice_orchestrator = VoiceOrchestrator(use_production=True, force_parakeet=True)
+    return voice_orchestrator
 
 # Convenience functions
 async def process_voice_conversation(
@@ -312,7 +320,8 @@ async def process_voice_conversation(
     conversation_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """Convenience function for voice conversations"""
-    return await voice_orchestrator.process_voice_request(
+    voice_orch = get_voice_orchestrator()
+    return await voice_orch.process_voice_request(
         audio_input_path, audio_output_path, user_id, conversation_id
     )
 
@@ -322,7 +331,8 @@ async def stream_voice_conversation(
     conversation_id: Optional[str] = None
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """Convenience function for streaming voice conversations"""
-    async for event in voice_orchestrator.process_voice_request_streaming(
+    voice_orch = get_voice_orchestrator()
+    async for event in voice_orch.process_voice_request_streaming(
         audio_input_path, user_id, conversation_id
     ):
         yield event

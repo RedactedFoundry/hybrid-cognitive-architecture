@@ -61,7 +61,7 @@ class StateMachineBuilder:
         """
         # Create the state graph with context_schema to avoid deprecated warnings
         from typing import Dict, Any
-        graph_builder = StateGraph(OrchestratorState, context_schema=Dict[str, Any])
+        graph_builder = StateGraph(OrchestratorState, config_schema=Dict[str, Any])
         
         # Add nodes for Smart Router architecture
         graph_builder.add_node("initialize", self.orchestrator._initialize_node)

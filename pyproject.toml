@@ -48,6 +48,9 @@ pyyaml = "^6.0"
 # Ollama client for multi-model LLM serving
 # Will use OpenAI-compatible API via HTTP requests (aiohttp already included)
 python-multipart = "^0.0.20"
+torch = "^2.7.1"
+torchaudio = "^2.7.1"
+silero-vad = "^5.1.2"
 
 [tool.poetry.group.dev.dependencies]
 # Testing framework

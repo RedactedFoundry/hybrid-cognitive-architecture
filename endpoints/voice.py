@@ -18,9 +18,9 @@ import structlog
 
 from models.api_models import VoiceChatResponse
 from utils.websocket_utils import WebSocketConnectionManager
-from voice_foundation.orchestrator_integration import voice_orchestrator
-from websockets.voice_handlers import handle_voice_input
-from websockets.chat_handlers import handle_conversation_interrupt
+from voice_foundation.orchestrator_integration import get_voice_orchestrator
+from websocket_handlers.voice_handlers import handle_voice_input
+from websocket_handlers.chat_handlers import handle_conversation_interrupt
 
 # Set up logger
 logger = structlog.get_logger(__name__)
@@ -62,7 +62,8 @@ async def voice_chat(
         output_audio_path = f"{output_dir}/{request_id}_response.wav"
         
         # Process through voice foundation
-        result = await voice_orchestrator.process_voice_request(
+        voice_orch = get_voice_orchestrator()
+        result = await voice_orch.process_voice_request(
             audio_input_path=temp_audio_path,
             audio_output_path=output_audio_path,
             user_id=user_id,

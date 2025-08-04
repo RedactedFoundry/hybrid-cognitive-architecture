@@ -36,7 +36,7 @@ from utils.websocket_utils import (
 )
 from core.orchestrator.streaming import StreamingProcessor, StreamEvent, StreamEventType
 from core.orchestrator.models import ProcessingPhase
-from websockets.chat_handlers import websocket_chat_handler, handle_conversation_interrupt
+from websocket_handlers.chat_handlers import websocket_chat_handler, handle_conversation_interrupt
 from endpoints.voice import websocket_voice_endpoint
 from endpoints.chat import websocket_chat_endpoint
 
