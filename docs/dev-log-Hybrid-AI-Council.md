@@ -1562,3 +1562,65 @@ Processing Time: ~50 seconds total (vs 1-2s for simple questions)
 
 ---
 
+## August 5, 2025 @ 9:30pm
+### Session: TTS Architecture Decision & Voice Foundation Fix
+
+**STATUS**: Voice Foundation Broken - TTS Decision Locked
+
+### **🔒 CRITICAL ARCHITECTURAL DECISION**
+
+**LOCKED DECISION**: **Coqui XTTS v2** for ALL voice synthesis (no backup APIs for MVP)
+
+**Rationale**: 
+- Multi-voice essential for council architecture (different members = different voices)
+- 200ms latency perfectly acceptable for business conversations
+- Local deployment = unlimited usage, no per-character costs
+- Voice cloning capabilities for distinct council personalities
+
+**Documentation**: `decisions/004-coqui-xtts-v2-for-council-voices.md`
+
+### **⚠️ CURRENT ISSUE**
+
+**Voice Chat Completely Broken**: Voice foundation returns `None`
+```
+AttributeError: 'NoneType' object has no attribute 'process_audio_to_text'
+```
+
+**Root Cause**: 
+- Kyutai TTS disabled due to 30-50+ second synthesis times (unacceptable)
+- Edge-TTS fallback failed to initialize properly
+- No working TTS engine available
+
+### **✅ WHAT'S WORKING**
+
+- **Parakeet STT**: NVIDIA NeMo extracting clean text from voice input
+- **Smart Router**: 200ms text generation working correctly
+- **Multi-Model Council**: All 3 LLMs operational and coordinating
+- **Microphone Selection**: Fixed device selection UI for headset isolation
+
+### **🎯 IMMEDIATE NEXT STEPS**
+
+1. **Install Coqui TTS**: `poetry add TTS`
+2. **Replace broken TTS engine** in `voice_foundation/production_voice_engines.py`
+3. **Fix voice foundation initialization** to use XTTS v2
+4. **Configure multi-voice setup** for different council members
+
+**Expected Result**: 200ms real-time voice synthesis replacing current broken state
+
+### **📋 HANDOFF DOCUMENTATION**
+
+**Primary**: `COQUI_XTTS_HANDOFF.md` - Complete implementation guide
+**Decision**: `decisions/004-coqui-xtts-v2-for-council-voices.md` - Full rationale
+**TODOs**: Updated with XTTS v2 implementation path
+
+### **🧠 SESSION INSIGHTS**
+
+- **200ms vs 40ms latency difference is imperceptible** to humans in conversation
+- **Multi-voice capability >> speed optimization** for council architecture  
+- **Local deployment fits business model** with heavy usage patterns
+- **Focus on single excellent solution** rather than managing backup systems
+
+**Next Session Goal**: Restore voice chat functionality with Coqui XTTS v2
+
+---
+

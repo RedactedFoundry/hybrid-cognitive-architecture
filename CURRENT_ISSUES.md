@@ -1,7 +1,15 @@
 # 🎯 Current Issues & Priorities
 
-> **Last Updated**: August 4, 2025  
+> **Last Updated**: August 4, 2025  @ 9:25pm
 > **Status**: Multi-model AI Council fully operational - ready for cloud deployment
+
+## 🔒 **LOCKED ARCHITECTURAL DECISIONS**
+
+### **TTS Engine Choice (August 5, 2025)**
+- **FINAL DECISION**: **Coqui XTTS v2** for ALL voice synthesis (no backup APIs for MVP)
+- **Rationale**: Multi-voice council support, 200ms latency, local privacy, unlimited usage
+- **Documentation**: `decisions/004-coqui-xtts-v2-for-council-voices.md`
+- **Next Action**: Replace broken Kyutai/Edge-TTS with XTTS v2 implementation
 
 ## ✅ **Critical Issues RESOLVED (August 4, 2025)**
 

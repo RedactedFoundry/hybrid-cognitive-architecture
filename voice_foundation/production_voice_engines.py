@@ -136,7 +136,9 @@ class ProductionSTTEngine:
             if self.use_nemo and self.model:
                 # Use NVIDIA Parakeet-TDT (SOTA)
                 output = self.model.transcribe([audio_path])
-                transcription = output[0]
+                # Extract text from NeMo Hypothesis object
+                hypothesis = output[0]
+                transcription = hypothesis.text if hasattr(hypothesis, 'text') else str(hypothesis)
             elif self.fallback_model:
                 # Use Faster-Whisper fallback
                 segments, _ = self.fallback_model.transcribe(audio_path)

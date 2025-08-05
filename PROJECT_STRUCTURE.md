@@ -320,6 +320,8 @@ kyutai-tts/                           # External TTS model (gitignored)
 | `docs/INTEGRATION_MAP.md` | ✅ Created | Component interaction flows & system architecture | Current |
 | `docs/DEBUGGING_GUIDE.md` | ✅ Created | Project-specific troubleshooting & solutions | Current |
 | `Makefile` | ✅ Created | One-command operations (dev-setup, test-all, verify) | Current |
+| `COQUI_XTTS_HANDOFF.md` | ✅ Created | **HANDOFF DOC**: Complete implementation guide for XTTS v2 | Current |
+| `decisions/004-coqui-xtts-v2-for-council-voices.md` | ✅ Created | **LOCKED DECISION**: Coqui XTTS v2 for all council voice synthesis | Current |
 | `decisions/003-why-smart-router-architecture.md` | ✅ Created | Smart router architecture decision record | Current |
 | `decisions/002-why-tigergraph-over-postgres.md` | ✅ Created | TigerGraph database choice decision record | Current |
 | `decisions/001-why-ollama-over-vllm.md` | ✅ Created | Ollama vs vLLM model serving decision record | Current |

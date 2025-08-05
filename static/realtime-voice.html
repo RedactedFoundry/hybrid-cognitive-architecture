@@ -240,6 +240,14 @@
         <div id="settingsPanel" class="settings-panel">
             <h4>Voice Settings</h4>
             <label>
+                Microphone Device:
+                <select id="microphoneSelect" style="background: rgba(20, 20, 40, 0.8); border: 1px solid rgba(147, 112, 219, 0.4); color: #b19cd9; padding: 5px; border-radius: 4px; margin-left: 10px;">
+                    <option value="">Select microphone...</option>
+                </select>
+                <button onclick="refreshDevices()" style="margin-left: 10px; padding: 5px 10px; background: rgba(147, 112, 219, 0.3); border: 1px solid rgba(147, 112, 219, 0.6); color: #b19cd9; border-radius: 4px; cursor: pointer;">🔄</button>
+            </label>
+            <br><br>
+            <label>
                 Voice Activity Threshold:
                 <input type="range" id="vadThreshold" min="0.001" max="0.1" step="0.001" value="0.01">
                 <span id="vadValue">0.01</span>
@@ -268,18 +276,81 @@
         let vadThreshold = 0.01;
         let silenceTimer = null;
         let isProcessing = false;
+        let availableDevices = [];
+        let selectedDeviceId = null;
+        
+        // Enumerate and populate microphone devices
+        async function loadMicrophoneDevices() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(device => device.kind === 'audioinput');
+                
+                const micSelect = document.getElementById('microphoneSelect');
+                micSelect.innerHTML = '<option value="">🎤 Default Microphone</option>';
+                
+                audioInputs.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.textContent = device.label || `Microphone ${device.deviceId.substring(0, 8)}...`;
+                    micSelect.appendChild(option);
+                });
+                
+                availableDevices = audioInputs;
+                console.log('Available microphones:', audioInputs.length);
+                
+                // Set change listener
+                micSelect.addEventListener('change', (e) => {
+                    selectedDeviceId = e.target.value || null;
+                    console.log('Selected microphone:', selectedDeviceId);
+                    updateStatus(`🎤 Microphone changed to: ${e.target.options[e.target.selectedIndex].text}`, 'ready');
+                });
+                
+            } catch (error) {
+                console.error('Error enumerating devices:', error);
+                updateStatus('⚠️ Could not access audio devices', 'error');
+            }
+        }
+        
+        // Refresh device list
+        async function refreshDevices() {
+            updateStatus('🔄 Refreshing microphone list...', 'processing');
+            await loadMicrophoneDevices();
+            updateStatus('✅ Device list refreshed', 'ready');
+        }
         
         // Initialize the voice chat system
         async function initializeVoiceChat() {
             try {
-                // Request microphone access
+                // Check if running on HTTPS or localhost (required for microphone)
+                if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    updateStatus('⚠️ Microphone requires HTTPS or localhost. Please use HTTPS.', 'error');
+                    return false;
+                }
+                
+                // Request microphone access directly (this triggers the browser permission prompt)
+                updateStatus('🎤 Requesting microphone access...', 'processing');
+                
+                // Build audio constraints with device selection
+                const audioConstraints = {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 16000
+                };
+                
+                // Add device ID if a specific microphone is selected
+                if (selectedDeviceId) {
+                    audioConstraints.deviceId = { exact: selectedDeviceId };
+                    console.log('Using specific microphone:', selectedDeviceId);
+                } else {
+                    console.log('Using default microphone');
+                }
+                
                 audioStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    } 
+                    audio: audioConstraints
                 });
+                
+                console.log('✅ Microphone access granted');
                 
                 // Set up audio analysis for voice activity detection
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -291,11 +362,25 @@
                 // Start voice activity detection
                 startVoiceActivityDetection();
                 
-                updateStatus('Microphone ready - click to start conversation', 'ready');
+                updateStatus('✅ Microphone ready - click to start conversation', 'ready');
+                return true;
                 
             } catch (error) {
                 console.error('Error accessing microphone:', error);
-                updateStatus('Microphone access denied. Please allow microphone access and refresh.', 'error');
+                
+                let errorMessage = '';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = '❌ Microphone access denied. Please click "Allow" when the browser asks for microphone permission, then refresh this page.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = '❌ No microphone found. Please connect a microphone and refresh.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = '❌ Microphone is busy. Please close other apps using the microphone and refresh.';
+                } else {
+                    errorMessage = `❌ Microphone error: ${error.message}. Please refresh and try again.`;
+                }
+                
+                updateStatus(errorMessage, 'error');
+                return false;
             }
         }
         
@@ -354,10 +439,10 @@
         }
         
         // Microphone control
-        function toggleMicrophone() {
+        async function toggleMicrophone() {
             if (!audioStream) {
-                initializeVoiceChat();
-                return;
+                const success = await initializeVoiceChat();
+                if (!success) return;
             }
             
             if (isListening) {
@@ -625,8 +710,12 @@
         });
         
         // Initialize on page load
-        window.addEventListener('load', () => {
-            updateStatus('Click microphone to start conversation', 'ready');
+        window.addEventListener('load', async () => {
+            // Load available microphone devices
+            await loadMicrophoneDevices();
+            
+            // Simple initialization - just show ready state
+            updateStatus('🎤 Click microphone to start conversation', 'ready');
         });
     </script>
 </body>

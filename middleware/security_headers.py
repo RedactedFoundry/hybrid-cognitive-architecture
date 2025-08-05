@@ -41,7 +41,7 @@ class SecurityConfig:
     
     # Permissions Policy (formerly Feature Policy)
     permissions_policy: str = (
-        "camera=(), microphone=(), geolocation=(), "
+        "camera=(self), microphone=(self), geolocation=(), "
         "payment=(), usb=(), magnetometer=(), "
         "gyroscope=(), accelerometer=()"
     )
