@@ -17,6 +17,12 @@ hybrid-cognitive-architecture/
 ├── .cursor-logs/                  # 🔗 SYMBOLIC LINK to external storage
 │   └── *.md                      # Conversation history (moved to D:\Council-Project\.cursor-logs)
 │
+├── project-docs/                  # 🔗 SYMBOLIC LINK to external storage
+│   ├── CODE_PATTERNS.md          # Code patterns and conventions
+│   ├── DEBUGGING_GUIDE.md        # Debugging and troubleshooting
+│   ├── SYSTEM_VERIFICATION_GUIDE.md # System verification procedures
+│   └── code-audit-prompt.md      # IDE/AI coding issues guide
+│
 ├── config/                        # Configuration management
 │   ├── __init__.py
 │   └── models.py                  # Model definitions and aliases
@@ -227,8 +233,13 @@ D:\Council-Project\
 │   ├── 2-cursor-ai-hybrid-build-chat-7-28-25.md
 │   ├── ...
 │   └── 12-cursor-ai-hybrid-build-chat-8-5-25.md
-└── dev-logs/                          # Development logs
-    └── dev-log-Hybrid-AI-Council.md   # Historical development progress
+├── dev-logs/                          # Development logs
+│   └── dev-log-Hybrid-AI-Council.md   # Historical development progress
+└── Project Docs/                      # Project documentation
+    ├── CODE_PATTERNS.md               # Code patterns and conventions
+    ├── DEBUGGING_GUIDE.md             # Debugging and troubleshooting
+    ├── SYSTEM_VERIFICATION_GUIDE.md   # System verification procedures
+    └── code-audit-prompt.md           # IDE/AI coding issues guide
 ```
 
 **Purpose**: Stores large historical files to improve main repo performance
@@ -243,6 +254,27 @@ D:\Council-Project\
 | archive/ | ❌ Removed | Old handoff files no longer needed | Aug 5 |
 | sentencepiece-0.2.1-cp313-cp313-win_amd64.whl | ❌ Removed | Temporary wheel file | Aug 5 |
 | server.log | ❌ Removed | Temporary log file | Aug 5 |
+| **CLEANUP COMPLETED** | 🔄 **Aug 5** | **Comprehensive codebase cleanup** | **Aug 5** |
+| start_main_api.py | ❌ Removed | Superseded by start_all.py | Aug 5 |
+| start_voice_service.py | ❌ Removed | Superseded by start_all.py | Aug 5 |
+| start_voice.sh | ❌ Removed | Superseded by start_all.py | Aug 5 |
+| quick_start.py | ❌ Removed | Superseded by start_all.py | Aug 5 |
+| start_manual.py | ❌ Removed | Superseded by start_all.py | Aug 5 |
+| test_voice_complete.py | ❌ Removed | Temporary debug test | Aug 5 |
+| test_voice_fix.py | ❌ Removed | Temporary debug test | Aug 5 |
+| test_audio_conversion.py | ❌ Removed | Temporary debug test | Aug 5 |
+| test_integration.py | ❌ Removed | Temporary debug test | Aug 5 |
+| SYSTEMATIC_DEBUG_PLAN.md | ❌ Removed | Temporary debug plan | Aug 5 |
+| STARTUP_COMMAND_GUIDE.md | ❌ Removed | Superseded by Makefile | Aug 5 |
+| main_project_deps.txt | ❌ Removed | Redundant with pyproject.toml | Aug 5 |
+| code-audit-prompt.md | 🔄 Moved | Moved to external storage | Aug 5 |
+| docs/CODE_PATTERNS.md | 🔄 Moved | Large doc moved to external storage | Aug 5 |
+| docs/SYSTEM_VERIFICATION_GUIDE.md | 🔄 Moved | Large doc moved to external storage | Aug 5 |
+| docs/DEBUGGING_GUIDE.md | 🔄 Moved | Large doc moved to external storage | Aug 5 |
+| test_voice_foundation.py | 🔄 Moved | Moved from root to tests/ directory | Aug 5 |
+| quick_db_check.py | 🔄 Moved | Moved from root to scripts/ directory | Aug 5 |
+| verify_system.py | 🔄 Moved | Moved from root to scripts/ directory | Aug 5 |
+| project-docs/ | ✅ Created | Symbolic link to external Project Docs | Aug 6 |
 
 ## 🎯 **Key Architectural Decisions**
 
