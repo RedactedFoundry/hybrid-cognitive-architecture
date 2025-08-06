@@ -218,3 +218,4 @@ models/
 # Third-party dependencies
 kyutai-tts/nul
 .cursor-logs/
+dev-logs/
