@@ -1,169 +1,201 @@
-# Hybrid AI Council - Project Structure
+# **Hybrid AI Council - Project Structure**
 
-## 🏗️ **Architecture Overview**
-
-This is a **hybrid cloud/local AI system** with a 3-layer cognitive architecture:
-- **Pheromind**: Subconscious pattern recognition (Redis pheromones)
-- **Council**: Conscious reasoning (LangGraph orchestrator)  
-- **KIP**: Knowledge integration & persistence (TigerGraph)
-
-## 📁 **Main Project Structure (Python 3.13)**
+## 📁 **Root Directory Structure**
 
 ```
-hybrid-cognitive-architecture/           # Main project (Python 3.13)
-├── .cursorrules                        # Cursor AI instructions
-├── .env                                # Environment variables
-├── .gitignore
-├── docker-compose.yaml                 # Docker services (Redis, TigerGraph)
-├── render.yaml                         # Cloud deployment config
-├── pyproject.toml                      # Main project dependencies (Python 3.13)
-├── README.md                           # Project overview
-├── start_all.py                        # 🚀 ONE COMMAND startup script
-├── main.py                             # FastAPI main application
-├── config.py                           # Centralized configuration
-├── config/                             # Configuration modules
+hybrid-cognitive-architecture/
+├── .cursorrules                    # Cursor AI instructions
+├── .env                           # Environment variables
+├── .gitignore                     # Git ignore rules (includes .cursor-logs/ and dev-logs/)
+├── docker-compose.yaml            # Docker services (Redis, TigerGraph, Ollama)
+├── main.py                        # Main FastAPI application
+├── pyproject.toml                 # Main project dependencies (Python 3.13)
+├── README.md                      # Project overview
+├── start_all.py                   # Single command to start all services
+├── verify_system.py               # System verification script
+│
+├── .cursor-logs/                  # 🔗 SYMBOLIC LINK to external storage
+│   └── *.md                      # Conversation history (moved to D:\Council-Project\.cursor-logs)
+│
+├── config/                        # Configuration management
 │   ├── __init__.py
-│   └── models.py                       # Model definitions & aliases
-├── core/                               # 🧠 Core AI components
-│   ├── orchestrator/                   # LangGraph orchestrator
+│   └── models.py                  # Model definitions and aliases
+│
+├── core/                          # Core AI system components
+│   ├── orchestrator/              # LangGraph orchestrator
 │   │   ├── __init__.py
-│   │   ├── orchestrator.py             # Main orchestrator
-│   │   ├── state_machine.py            # State management
-│   │   ├── streaming.py                # Real-time streaming
-│   │   ├── synthesis.py                # Response synthesis
-│   │   ├── models.py                   # State models
-│   │   └── nodes/                      # Processing nodes
-│   │       ├── __init__.py
-│   │       ├── base.py                 # Base node classes
-│   │       ├── council_nodes.py        # Council reasoning nodes
-│   │       ├── kip_nodes.py            # Knowledge integration nodes
-│   │       ├── pheromind_nodes.py      # Pattern recognition nodes
-│   │       ├── smart_router_nodes.py   # Smart routing nodes
-│   │       └── support_nodes.py        # Utility nodes
-│   ├── pheromind.py                    # Subconscious pattern recognition
-│   ├── kip/                            # Knowledge Integration & Persistence
+│   │   ├── orchestrator.py       # Main orchestrator
+│   │   ├── models.py             # Orchestrator models
+│   │   ├── nodes/                # Processing nodes
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py
+│   │   │   ├── council_nodes.py
+│   │   │   ├── kip_nodes.py
+│   │   │   ├── pheromind_nodes.py
+│   │   │   ├── smart_router_nodes.py
+│   │   │   └── support_nodes.py
+│   │   ├── processing_nodes.py
+│   │   ├── state_machine.py
+│   │   ├── streaming.py
+│   │   └── synthesis.py
+│   ├── pheromind.py              # Pheromone-based memory system
+│   ├── kip/                      # Knowledge Investment Protocol
 │   │   ├── __init__.py
-│   │   ├── agents.py                   # Autonomous agents
-│   │   ├── budget_manager.py           # Economic budget management
-│   │   ├── economic_analyzer.py        # Economic analysis
-│   │   ├── exceptions.py               # KIP-specific exceptions
-│   │   ├── models.py                   # Economic models
-│   │   ├── tools.py                    # Economic tools
-│   │   ├── transaction_processor.py    # Transaction processing
-│   │   ├── treasury_core.py            # Treasury core logic
-│   │   └── treasury.py                 # Treasury management
-│   ├── logging_config.py               # Structured logging setup
-│   ├── cache_integration.py            # Cache management
-│   ├── error_boundaries.py             # Error handling
-│   └── prompt_cache.py                 # Prompt caching
-├── clients/                            # External service clients
+│   │   ├── agents.py
+│   │   ├── budget_manager.py
+│   │   ├── economic_analyzer.py
+│   │   ├── exceptions.py
+│   │   ├── models.py
+│   │   ├── tools.py
+│   │   ├── transaction_processor.py
+│   │   ├── treasury_core.py
+│   │   └── treasury.py
+│   ├── logging_config.py         # Structured logging setup
+│   ├── cache_integration.py      # Redis cache integration
+│   ├── error_boundaries.py       # Error handling patterns
+│   └── prompt_cache.py           # LLM prompt caching
+│
+├── clients/                       # External service clients
 │   ├── __init__.py
-│   ├── ollama_client.py                # Ollama LLM client
-│   ├── redis_client.py                 # Redis cache client
-│   └── tigervector_client.py           # TigerGraph client
-├── voice_foundation/                   # 🎤 Voice system integration
-│   ├── __init__.py                     # Voice foundation package
-│   ├── voice_client.py                 # Voice service HTTP client
-│   ├── production_voice_engines.py     # Production voice engines
-│   ├── orchestrator_integration.py     # Voice orchestrator integration
-│   └── simple_voice_pipeline.py        # Simple voice pipeline
-├── endpoints/                          # API endpoints
+│   ├── redis_client.py           # Redis connection and operations
+│   ├── tigervector_client.py     # TigerGraph client
+│   └── ollama_client.py          # Ollama LLM client
+│
+├── endpoints/                     # FastAPI endpoints
 │   ├── __init__.py
-│   ├── chat.py                         # Chat endpoints
-│   ├── health.py                       # Health check endpoints
-│   └── voice.py                        # Voice endpoints
-├── middleware/                         # Request middleware
+│   ├── chat.py                   # Chat endpoints
+│   ├── health.py                 # Health check endpoints
+│   └── voice.py                  # Voice processing endpoints
+│
+├── middleware/                    # FastAPI middleware
 │   ├── __init__.py
-│   ├── rate_limiting.py                # Rate limiting
-│   ├── request_validation.py           # Request validation
-│   └── security_headers.py             # Security headers
-├── websocket_handlers/                 # WebSocket handlers
+│   ├── rate_limiting.py
+│   ├── request_validation.py
+│   └── security_headers.py
+│
+├── schemas/                       # Database schemas
+│   └── schema.gsql               # TigerGraph schema
+│
+├── scripts/                       # Utility scripts
 │   ├── __init__.py
-│   ├── handlers.py                     # Base handlers
-│   ├── chat_handlers.py                # Chat WebSocket handlers
-│   └── voice_handlers.py               # Voice WebSocket handlers
-├── utils/                              # Utility functions
-│   ├── __init__.py
-│   ├── client_utils.py                 # Client utilities
-│   ├── error_utils.py                  # Error handling utilities
-│   └── websocket_utils.py              # WebSocket utilities
-├── tools/                              # External tools
-│   ├── __init__.py
-│   ├── web_tools.py                    # Web scraping tools
-│   └── marketing_tools_plan.md         # Marketing tools plan
-├── static/                             # Static web assets
+│   ├── start_everything.py       # Service orchestration
+│   ├── init_tigergraph.py        # Database initialization
+│   ├── setup-tigergraph.sh       # TigerGraph setup (Linux/Mac)
+│   ├── setup-tigergraph.ps1      # TigerGraph setup (Windows)
+│   ├── start_tigergraph_safe.py  # Safe TigerGraph startup
+│   ├── smart_tigergraph_init.py  # Smart database initialization
+│   ├── check_financial_status.py # KIP status checker
+│   └── check-file-sizes.py       # File size monitoring
+│
+├── static/                        # Web interface files
+│   ├── index.html                # Main dashboard
+│   ├── realtime-voice.html       # Voice chat interface
+│   ├── voice-test.html           # Voice testing interface
 │   ├── css/
-│   │   └── styles.css                  # Main stylesheet
-│   ├── js/
-│   │   └── client.js                   # Frontend JavaScript
-│   ├── index.html                      # Main dashboard
-│   ├── realtime-voice.html             # Voice chat interface
-│   └── voice-test.html                 # Voice testing interface
-├── schemas/                            # Database schemas
-│   └── schema.gsql                     # TigerGraph schema
-├── scripts/                            # Utility scripts
-│   ├── README.md                       # Scripts documentation
-│   ├── setup-tigergraph.sh             # TigerGraph setup (Linux/Mac)
-│   ├── setup-tigergraph.ps1            # TigerGraph setup (Windows)
-│   ├── init_tigergraph.py              # Database initialization
-│   ├── smart_tigergraph_init.py        # Smart initialization
-│   ├── start_everything.py             # Master startup script
-│   ├── start_tigergraph_safe.py        # Safe TigerGraph startup
-│   ├── check_financial_status.py       # Financial status checker
-│   └── check-file-sizes.py             # File size checker
-├── tests/                              # Test suite
+│   │   └── styles.css
+│   └── js/
+│       └── client.js
+│
+├── tests/                         # Test suite
 │   ├── __init__.py
-│   ├── run_tests.py                    # Test runner
-│   ├── test_initial.py                 # Initial tests
-│   ├── test_api_endpoints.py           # API endpoint tests
-│   ├── test_cognitive_nodes.py         # Cognitive node tests
-│   ├── test_configuration.py           # Configuration tests
-│   ├── test_economic_behaviors.py      # Economic behavior tests
-│   ├── test_end_to_end_workflows.py    # End-to-end workflow tests
-│   ├── test_kip_tools.py               # KIP tool tests
-│   ├── test_production_readiness.py    # Production readiness tests
-│   ├── test_prompt_cache.py            # Prompt cache tests
-│   ├── test_security_middleware.py     # Security middleware tests
-│   ├── test_setup.py                   # Setup tests
-│   ├── test_smart_router.py            # Smart router tests
-│   ├── test_voice_foundation.py        # Voice foundation tests
-│   ├── test_websocket_streaming.py     # WebSocket streaming tests
-│   └── voice_foundation/               # Voice-specific tests
-│       ├── test_pipeline.py            # Voice pipeline tests
-│       ├── test_kyutai_tts_only.py     # Kyutai TTS tests
-│       └── test_production_voice.py    # Production voice tests
-├── docs/                               # Documentation
+│   ├── test_initial.py           # Basic system tests
+│   ├── test_api_endpoints.py     # API endpoint tests
+│   ├── test_cognitive_nodes.py   # Cognitive system tests
+│   ├── test_configuration.py     # Configuration tests
+│   ├── test_economic_behaviors.py # KIP economic tests
+│   ├── test_end_to_end_workflows.py # End-to-end tests
+│   ├── test_kip_tools.py         # KIP tool tests
+│   ├── test_production_readiness.py # Production tests
+│   ├── test_prompt_cache.py      # Cache tests
+│   ├── test_security_middleware.py # Security tests
+│   ├── test_setup.py             # Setup tests
+│   ├── test_smart_router.py      # Router tests
+│   ├── test_voice_foundation.py  # Voice integration tests
+│   ├── test_websocket_streaming.py # WebSocket tests
+│   └── voice_foundation/         # Voice-specific tests
+│       ├── test_kyutai_tts_only.py
+│       ├── test_pipeline.py
+│       └── test_production_voice.py
+│
+├── tools/                         # External tool integrations
+│   ├── __init__.py
+│   ├── web_tools.py              # Web scraping tools
+│   └── marketing_tools_plan.md   # Marketing tools roadmap
+│
+├── utils/                         # Utility functions
+│   ├── __init__.py
+│   ├── client_utils.py           # Client utilities
+│   ├── error_utils.py            # Error handling utilities
+│   └── websocket_utils.py        # WebSocket utilities
+│
+├── voice_foundation/              # Voice processing integration
+│   ├── __init__.py
+│   ├── voice_client.py           # Voice service client
+│   ├── production_voice_engines.py # Voice foundation wrapper
+│   ├── simple_voice_pipeline.py  # Simple voice pipeline
+│   ├── orchestrator_integration.py # Voice orchestrator
+│   ├── create_test_audio.py      # Test audio generation
+│   ├── integration_test_output.wav # Test audio file
+│   ├── test_audio.wav            # Test audio file
+│   ├── test_output.wav           # Test audio file
+│   ├── requirements.txt           # Voice dependencies (legacy)
+│   ├── README.md                  # Voice foundation docs
+│   ├── production_voice_engines.py # Production voice engines
+│   ├── simple_voice_pipeline.py  # Simple voice pipeline
+│   ├── orchestrator_integration.py # Voice orchestrator integration
+│   └── outputs/                  # Generated audio files
+│       ├── kyutai_test.wav
+│       ├── realtime_*.wav        # Real-time voice outputs
+│       └── test_*.wav            # Test audio outputs
+│
+├── websocket_handlers/            # WebSocket message handlers
+│   ├── __init__.py
+│   ├── handlers.py               # Base handlers
+│   ├── chat_handlers.py          # Chat message handlers
+│   └── voice_handlers.py         # Voice message handlers
+│
+├── docs/                          # Documentation
 │   ├── Hybrid AI Council_ Architectural Blueprint v3.8 (Final).md
 │   ├── Unified Implementation Plan v2.3 (Final).md
-│   ├── dev-log-Hybrid-AI-Council.md   # Development log
-│   ├── ENVIRONMENT_VARIABLES.md        # Environment setup guide
-│   ├── TigerGraph_Community_Edition_Setup.md
-│   ├── SYSTEM_VERIFICATION_GUIDE.md    # System verification
-│   ├── MULTI_MODEL_TEST_GUIDE.md      # Multi-model testing
-│   ├── INTEGRATION_MAP.md             # Integration mapping
+│   ├── dev-log-Hybrid-AI-Council.md # 🔗 SYMBOLIC LINK to external storage
+│   ├── AUTONOMOUS_TRADING_SYSTEM.md
+│   ├── CODE_PATTERNS.md
+│   ├── DEBUGGING_GUIDE.md
+│   ├── ENVIRONMENT_VARIABLES.md
+│   ├── INTEGRATION_MAP.md
 │   ├── KIP_AUTONOMOUS_AGENTS_EXPLAINED.md
-│   ├── AUTONOMOUS_TRADING_SYSTEM.md   # Trading system docs
-│   ├── CODE_PATTERNS.md               # Code patterns guide
-│   ├── DEBUGGING_GUIDE.md             # Debugging guide
-│   ├── SECURITY.md                    # Security guidelines
-│   ├── SYSTEM_PERFECTION_ROADMAP.md   # System roadmap
 │   ├── MIDDLEWARE_FIX_DOCUMENTATION.md
-│   └── REST_API_FIX_DOCUMENTATION.md
-├── decisions/                          # Architecture decisions
-│   ├── template.md                     # Decision template
-│   ├── 001-why-ollama-over-vllm.md    # Ollama decision
+│   ├── MULTI_MODEL_TEST_GUIDE.md
+│   ├── REST_API_FIX_DOCUMENTATION.md
+│   ├── SECURITY.md
+│   ├── SYSTEM_VERIFICATION_GUIDE.md
+│   └── TigerGraph_Community_Edition_Setup.md
+│
+├── decisions/                     # Architecture decisions
+│   ├── template.md               # Decision template
+│   ├── 001-why-ollama-over-vllm.md
 │   ├── 002-why-tigergraph-over-postgres.md
 │   ├── 003-why-smart-router-architecture.md
 │   └── 004-coqui-xtts-v2-for-council-voices.md
-├── docker/                             # Docker configurations
-│   └── vllm/                          # vLLM configurations
-└── archive/                            # Archived files
-    ├── CHAT_SESSION_HANDOFF.md
-    ├── code_audit_progress.md
-    ├── CODE_CLEANUP_AUDIT.md
-    ├── REFACTORING_HANDOFF_V2.md
-    ├── SESSION_SUMMARY_AUG_4_2025.md
-    └── SMART_ROUTER_HANDOFF.md
+│
+└── python311-services/            # 🚀 **Python 3.11 Microservices (NEW ARCHITECTURE)**
+    ├── pyproject.toml            # Python 3.11 dependencies (voice/ML)
+    ├── README.md                  # Service overview & purpose
+    ├── SETUP_GUIDE.md            # Complete setup instructions
+    ├── setup.py                   # Automated dependency installer
+    ├── voice/                     # Voice processing microservice
+    │   ├── __init__.py
+    │   ├── main.py               # FastAPI voice service
+    │   ├── engines/              # Voice processing engines
+    │   │   ├── __init__.py
+    │   │   └── voice_engines.py  # STT (Parakeet) + TTS (XTTS v2)
+    │   └── outputs/              # Generated audio files
+    ├── shared/                    # Shared utilities (future expansion)
+    └── tests/                     # Voice service tests
+        ├── __init__.py
+        ├── test_voice_engines.py # Voice engine unit tests
+        ├── test_voice_service.py # Voice service integration tests
+        └── README.md             # Test documentation
 ```
 
 ## 🚀 **Python 3.11 Microservices (NEW ARCHITECTURE)**
@@ -181,73 +213,62 @@ python311-services/                     # Python 3.11 compatibility layer
 │   │   ├── __init__.py
 │   │   └── voice_engines.py            # STT (Parakeet) + TTS (XTTS v2)
 │   └── outputs/                        # Generated audio files
-├── tests/                              # Voice service tests
-│   ├── __init__.py
-│   ├── test_voice_engines.py           # Voice engine unit tests
-│   └── test_voice_service.py           # Voice service integration tests
 └── shared/                             # Shared utilities (future expansion)
 ```
 
 **Purpose**: Handles Python 3.11-only dependencies (voice/ML) as microservice
 
-## 📊 **Recently Modified**
+## 📊 **External Storage (Performance Optimization)**
+
+```
+D:\Council-Project\
+├── .cursor-logs/                      # Conversation history (18MB+)
+│   ├── 1-cursor-ai-hybrid-build-chat-7-28-25.md
+│   ├── 2-cursor-ai-hybrid-build-chat-7-28-25.md
+│   ├── ...
+│   └── 12-cursor-ai-hybrid-build-chat-8-5-25.md
+└── dev-logs/                          # Development logs
+    └── dev-log-Hybrid-AI-Council.md   # Historical development progress
+```
+
+**Purpose**: Stores large historical files to improve main repo performance
+
+## 🔧 **Recently Modified**
 
 | File | Action | Reason | Session |
 |------|--------|--------|---------|
-| `start_all.py` | ✅ Created | One-command startup script for all services | Current |
-| `python311-services/voice/main.py` | ✅ Created | FastAPI voice service with STT/TTS endpoints | Current |
-| `python311-services/voice/engines/voice_engines.py` | ✅ Created | NeMo Parakeet STT + Coqui XTTS v2 TTS engines | Current |
-| `voice_foundation/voice_client.py` | ✅ Created | HTTP client for voice service communication | Current |
-| `voice_foundation/production_voice_engines.py` | 🔄 Updated | Updated to use voice service client instead of direct imports | Current |
-| `pyproject.toml` | 🔄 Updated | Removed voice dependencies, updated to Python 3.13 | Current |
-| `python311-services/pyproject.toml` | ✅ Created | Python 3.11 dependencies for voice microservice | Current |
-| `websocket_handlers/voice_handlers.py` | 🔄 Updated | Updated to use initialized voice orchestrator | Current |
-| `voice_foundation/orchestrator_integration.py` | 🔄 Updated | Added async initialization and retry logic | Current |
-| `main.py` | 🔄 Updated | Updated to use async voice orchestrator initialization | Current |
-| `tests/voice_foundation/test_pipeline.py` | ❌ Removed | Moved to python311-services/tests/ | Current |
-| `tests/voice_foundation/test_kyutai_tts_only.py` | ❌ Removed | No longer needed (Kyutai removed) | Current |
-| `tests/test_voice_foundation.py` | 🔄 Updated | Updated to test microservice integration | Current |
-| `kyutai-tts/` | ❌ Removed | Entire directory removed (replaced with Coqui XTTS v2) | Current |
-| `voice_foundation/requirements.txt` | ❌ Removed | No longer needed (using pyproject.toml) | Current |
+| .gitignore | ✅ Updated | Added .cursor-logs/ and dev-logs/ exclusions | Aug 5 |
+| docs/dev-log-Hybrid-AI-Council.md | 🔄 Moved | Moved to external storage for performance | Aug 5 |
+| docs/SYSTEM_PERFECTION_ROADMAP.md | ❌ Removed | Outdated roadmap with old TODO items | Aug 5 |
+| archive/ | ❌ Removed | Old handoff files no longer needed | Aug 5 |
+| sentencepiece-0.2.1-cp313-cp313-win_amd64.whl | ❌ Removed | Temporary wheel file | Aug 5 |
+| server.log | ❌ Removed | Temporary log file | Aug 5 |
 
-## 🎯 **Key Components**
+## 🎯 **Key Architectural Decisions**
 
-### **Voice System (NEW)**
-- **STT**: NVIDIA NeMo Parakeet-TDT-0.6B-v2 (SOTA speech recognition)
-- **TTS**: Coqui XTTS v2 (multi-voice, voice cloning, ~200ms latency)
-- **Architecture**: Python 3.11 microservice communicating via HTTP
-- **Integration**: HTTP client in main project for seamless communication
+1. **Python Version Split**: Main project (3.13) + Voice microservice (3.11)
+2. **External Storage**: Large historical files moved to `D:\Council-Project\`
+3. **Microservices**: Voice processing isolated in separate service
+4. **Performance**: Main repo optimized to ~35K lines (was 476K+)
 
-### **Core AI Components**
-- **Orchestrator**: LangGraph-based state machine for cognitive workflows
-- **Pheromind**: Redis-based subconscious pattern recognition
-- **KIP**: TigerGraph-based knowledge integration with economic modeling
-- **Smart Router**: Intelligent request routing and load balancing
-
-### **External Services**
-- **Ollama**: Local LLM inference (Mistral, Qwen3, DeepSeek)
-- **TigerGraph**: Graph database for knowledge persistence
-- **Redis**: Caching and pheromone storage
-- **Docker**: Containerized services
-
-## 🚀 **Quick Start**
+## 🚀 **Quick Start Commands**
 
 ```bash
 # Start everything with one command
 python start_all.py
 
+# Or use the script
+python scripts/start_everything.py --with-api
+
 # Access the system
 # Main Dashboard: http://localhost:8001/static/index.html
 # Voice Chat: http://localhost:8001/static/realtime-voice.html
-# Voice Health: http://localhost:8011/health
+# Voice Service: http://localhost:8011/health
 ```
 
-## 📋 **Development Status**
+## 📈 **Performance Metrics**
 
-- ✅ **Voice System**: Fully implemented and working
-- ✅ **Core Architecture**: Complete with 3-layer cognitive system
-- ✅ **Microservices**: Python 3.13/3.11 split working
-- ✅ **One-Command Startup**: All services start with single command
-- ✅ **Production Ready**: Error handling, logging, health checks
-- 🔄 **Testing**: Comprehensive test suite in place
-- 🔄 **Documentation**: Complete architectural documentation
+- **Main Repo**: ~35K lines (down from 476K+)
+- **External Storage**: ~437K lines moved to `D:\Council-Project\`
+- **Performance Gain**: ~92% reduction in main repo size
+- **Accessibility**: All files still accessible via symbolic links
