@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 # Import voice foundation components
 from voice_foundation.orchestrator_integration import VoiceOrchestrator
 from voice_foundation.simple_voice_pipeline import VoiceFoundation, MockSTTEngine, MockTTSEngine
-from voice_foundation.production_voice_engines import ProductionSTTEngine, ProductionTTSEngine, create_voice_foundation
+from voice_foundation.production_voice_engines import create_voice_foundation
 
 # Import related models for integration testing
 from models.api_models import VoiceChatResponse
@@ -365,85 +365,37 @@ class TestVoiceOrchestrator:
                 assert result["response_text"] == "Thank you for your question. I understand you're asking about AI capabilities."
 
 
-class TestProductionVoiceEngines:
-    """Test production voice engines (with mocking to avoid heavy model dependencies)."""
+# NOTE: Production voice engine tests moved to python311-services/tests/
+# The production engines now use microservice architecture and are tested
+# in the Python 3.11 service where the actual models run.
+# See:
+# - python311-services/tests/test_voice_engines.py (engine tests)  
+# - python311-services/tests/test_voice_service.py (API tests)
+# - tests/test_voice_microservice_integration.py (integration tests)
+
+class TestVoiceFoundationMicroserviceIntegration:
+    """Test voice foundation integration with microservice architecture."""
     
     @pytest.mark.asyncio
-    async def test_production_stt_engine_initialization(self):
-        """Test production STT engine initialization."""
-        with patch('voice_foundation.production_voice_engines.TRANSFORMERS_AVAILABLE', True), \
-             patch('voice_foundation.production_voice_engines.AutoProcessor') as mock_processor, \
-             patch('voice_foundation.production_voice_engines.AutoModelForSpeechSeq2Seq') as mock_model:
-            
-            mock_processor.from_pretrained.return_value = MagicMock()
-            mock_model.from_pretrained.return_value = MagicMock()
-            
-            engine = ProductionSTTEngine(force_parakeet=True)
-            await engine.initialize()
-            
-            assert engine.is_initialized is True
-            assert "Parakeet" in engine.name
-    
-    @pytest.mark.asyncio
-    async def test_production_stt_engine_fallback(self):
-        """Test production STT engine fallback to Faster-Whisper."""
-        with patch('voice_foundation.production_voice_engines.TRANSFORMERS_AVAILABLE', False), \
-             patch('voice_foundation.production_voice_engines.WhisperModel') as mock_whisper:
-            
-            mock_whisper.return_value = MagicMock()
-            
-            engine = ProductionSTTEngine(force_parakeet=False)  # Don't force Parakeet to test fallback
-            await engine.initialize()
-            
-            assert engine.is_initialized is True
-            assert "Faster-Whisper" in engine.name
-    
-    @pytest.mark.asyncio
-    async def test_production_tts_engine_initialization(self):
-        """Test production TTS engine initialization."""
-        with patch('voice_foundation.production_voice_engines.subprocess.run') as mock_subprocess:
-            mock_subprocess.return_value.returncode = 0
-            mock_subprocess.return_value.stdout = "kyutai version 1.0"
-            
-            engine = ProductionTTSEngine()
-            await engine.initialize()
-            
-            assert engine.is_initialized is True
-            assert "Kyutai" in engine.name
-    
-    @pytest.mark.asyncio
-    async def test_production_tts_engine_fallback(self):
-        """Test production TTS engine fallback."""
-        with patch('voice_foundation.production_voice_engines.subprocess.run') as mock_subprocess, \
-             patch('voice_foundation.production_voice_engines.logger') as mock_logger:
-            
-            mock_subprocess.side_effect = FileNotFoundError("kyutai not found")
-            
-            engine = ProductionTTSEngine()
-            await engine.initialize()
-            
-            assert engine.is_initialized is True
-            assert ("Edge-TTS" in engine.name or "Fallback" in engine.name), f"Engine name: {engine.name}"
-    
-    @pytest.mark.asyncio
-    async def test_create_voice_foundation_production(self):
-        """Test creating voice foundation with production engines."""
-        with patch('voice_foundation.production_voice_engines.ProductionSTTEngine') as mock_stt_class, \
-             patch('voice_foundation.production_voice_engines.ProductionTTSEngine') as mock_tts_class:
-            
-            mock_stt = MagicMock()
-            mock_stt.initialize = AsyncMock()
-            mock_stt_class.return_value = mock_stt
-            
-            mock_tts = MagicMock()
-            mock_tts.initialize = AsyncMock()
-            mock_tts_class.return_value = mock_tts
+    async def test_create_voice_foundation_production_mocked(self):
+        """Test creating voice foundation with production engines (mocked microservice)."""
+        # Mock the health check to simulate a running voice service
+        mock_health_data = {
+            "status": "healthy",
+            "services": {
+                "stt": {"engine": "NVIDIA Parakeet-TDT-0.6B-v2", "initialized": True},
+                "tts": {"engine": "Coqui XTTS v2", "initialized": True}
+            }
+        }
+        
+        with patch('voice_foundation.voice_client.VoiceServiceClient.health_check') as mock_health:
+            mock_health.return_value = mock_health_data
             
             foundation = await create_voice_foundation(use_production=True, force_parakeet=True)
             
             assert foundation is not None
-            mock_stt.initialize.assert_called_once()
-            mock_tts.initialize.assert_called_once()
+            assert foundation.is_initialized
+            assert "Microservice" in foundation.name
     
     @pytest.mark.asyncio
     async def test_create_voice_foundation_mock(self):

@@ -310,6 +310,36 @@ def get_voice_orchestrator():
     global voice_orchestrator
     if voice_orchestrator is None:
         voice_orchestrator = VoiceOrchestrator(use_production=True, force_parakeet=True)
+        # Note: Initialization happens lazily when first used
+        # This prevents blocking imports and startup
+    return voice_orchestrator
+
+async def get_initialized_voice_orchestrator():
+    """Get or create and initialize the global voice orchestrator instance."""
+    global voice_orchestrator
+    if voice_orchestrator is None:
+        voice_orchestrator = VoiceOrchestrator(use_production=True, force_parakeet=True)
+    
+    if not voice_orchestrator.is_initialized:
+        # Add retry logic for voice service connection
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                await voice_orchestrator.initialize()
+                logger.info("Voice orchestrator initialized successfully")
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Voice orchestrator initialization attempt {attempt + 1} failed, retrying in {retry_delay}s", error=str(e))
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error("Voice orchestrator initialization failed after all retries", error=str(e))
+                    # Don't raise - let the application continue without voice
+                    return None
+    
     return voice_orchestrator
 
 # Convenience functions

@@ -1,427 +1,265 @@
 """
-Production Voice Engines - SOTA Models (July 2025)
-Based on latest benchmarks: Parakeet-TDT + Kyutai TTS + Silero VAD
+Production Voice Engines - Microservice Architecture (August 2025)
+Uses Python 3.11 Voice Service for NeMo Parakeet STT + Coqui XTTS v2
 
-NVIDIA Parakeet-TDT-0.6B-v2: 6.05% WER, RTF 3380 (60 min in 1 sec)
-Kyutai TTS-1.6B: 2.82% WER (beats ElevenLabs 4.05%), 220ms latency
-Silero VAD v3: <1ms processing, enterprise-grade accuracy
+Migration from local engines to microservice architecture for Python version compatibility.
 """
 
 import asyncio
 import time
-import numpy as np
-import torch
-import torchaudio
+import uuid
 from pathlib import Path
-from typing import Optional
-import logging
+from typing import Optional, Dict, Any
 import structlog
 
-# For Parakeet-TDT via HuggingFace (primary method)
-try:
-    from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq, pipeline
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-
-# Faster-Whisper as backup STT (optional)
-try:
-    from faster_whisper import WhisperModel
-    FASTER_WHISPER_AVAILABLE = True
-except ImportError:
-    FASTER_WHISPER_AVAILABLE = False
-    WhisperModel = None
-
-# Silero VAD for voice activity detection
-import silero_vad
+from .voice_client import VoiceServiceClient
 
 # Set up structured logging
 logger = structlog.get_logger("voice_engines")
 
-# For Kyutai TTS
-import subprocess
-import os
-
 class ProductionSTTEngine:
     """
-    NVIDIA Parakeet-TDT-0.6B-v2 STT Engine (SOTA)
+    NVIDIA Parakeet-TDT-0.6B-v2 STT Engine via Microservice
     Performance: 6.05% WER, RTF 3380 (60 min in 1 sec)
-    Uses NeMo when available, falls back to Faster-Whisper
     """
     
-    def __init__(self, force_parakeet=True):
-        self.name = "NVIDIA Parakeet-TDT-0.6B-v2 (SOTA)"
-        self.force_parakeet = force_parakeet
-        self.model = None
-        self.fallback_model = None
-        self.use_nemo = False
+    def __init__(self, service_url: str = "http://localhost:8011"):
+        self.name = "NVIDIA Parakeet-TDT-0.6B-v2 (Microservice)"
+        self.service_url = service_url
+        self.client = VoiceServiceClient(service_url)
         self.is_initialized = False
         
     async def initialize(self):
-        """Initialize Parakeet-TDT or fallback to Faster-Whisper"""
+        """Initialize STT engine by checking service health"""
         if self.is_initialized:
             return
             
-        # Try NeMo first for Parakeet-TDT
-        if self.force_parakeet:
-            try:
-                logger.info("Loading NVIDIA Parakeet-TDT-0.6B-v2 SOTA STT model")
-                start_time = time.time()
-                
-                # Import NeMo and load Parakeet (using working configuration)
-                import nemo.collections.asr as nemo_asr
-                self.model = nemo_asr.models.ASRModel.from_pretrained(
-                    "nvidia/parakeet-tdt-0.6b-v2"
-                )
-                
-                load_time = time.time() - start_time
-                logger.info("NVIDIA Parakeet-TDT-0.6B-v2 loaded successfully", 
-                          load_time_seconds=load_time, 
-                          wer_percentage=6.05, 
-                          rtf=3380)
-                
-                self.use_nemo = True
-                self.is_initialized = True
-                return
-                
-            except ImportError as e:
-                logger.warning("NeMo not available, falling back to Faster-Whisper", error=str(e))
-            except Exception as e:
-                logger.warning("Parakeet-TDT failed to load, falling back to Faster-Whisper", error=str(e))
-        
-        # Fallback to Faster-Whisper (if available)
-        if FASTER_WHISPER_AVAILABLE:
-            try:
-                logger.info("Loading Faster-Whisper Large-v3-Turbo as SOTA fallback")
-                start_time = time.time()
-                
-                self.fallback_model = WhisperModel(
-                    "large-v3-turbo", 
-                    device="auto",  # Will use GPU if available
-                    compute_type="auto"  # Will optimize automatically
-                )
+        try:
+            logger.info("Initializing STT via voice service", service_url=self.service_url)
             
-                load_time = time.time() - start_time
-                logger.info("Faster-Whisper Large-v3-Turbo loaded successfully", 
-                           load_time_seconds=load_time, 
-                           quality="high-quality-fallback")
-                
-                self.name = "Faster-Whisper Large-v3-Turbo (SOTA Fallback)"
+            # Check if service is healthy
+            health_status = await self.client.health_check()
+            
+            if health_status.get("status") == "healthy":
+                stt_info = health_status.get("services", {}).get("stt", {})
+                logger.info("STT engine initialized successfully",
+                           engine=stt_info.get("engine", "Unknown"),
+                           service_status="healthy")
                 self.is_initialized = True
+            else:
+                raise Exception(f"Voice service unhealthy: {health_status}")
                 
-            except Exception as e:
-                logger.error("Faster-Whisper fallback failed", error=str(e))
-                raise
-        else:
-            # No STT engines available
-            logger.warning("No STT engines available - voice input will not work")
-            logger.info("Install dependencies: pip install transformers torch nemo-toolkit[all] faster-whisper")
-            self.name = "No STT Engine Available"
-            self.fallback_model = None
-            self.is_initialized = True  # Allow system to start without STT
+        except Exception as e:
+            logger.error("STT initialization failed", error=str(e))
+            raise
     
     async def transcribe(self, audio_path: str) -> Optional[str]:
-        """Transcribe audio to text using Parakeet-TDT or Faster-Whisper"""
+        """Transcribe audio file to text"""
         if not self.is_initialized:
             await self.initialize()
-        
-        # Check if any STT engine is available
-        if not self.model and not self.fallback_model:
-            logger.warning("No STT engines available for transcription")
-            return None
-        
+            
         try:
             start_time = time.time()
-            
-            if self.use_nemo and self.model:
-                # Use NVIDIA Parakeet-TDT (SOTA)
-                output = self.model.transcribe([audio_path])
-                # Extract text from NeMo Hypothesis object
-                hypothesis = output[0]
-                transcription = hypothesis.text if hasattr(hypothesis, 'text') else str(hypothesis)
-            elif self.fallback_model:
-                # Use Faster-Whisper fallback
-                segments, _ = self.fallback_model.transcribe(audio_path)
-                transcription = " ".join([segment.text for segment in segments])
-            else:
-                logger.error("No working STT engine available")
-                return None
-            
+            result = await self.client.speech_to_text(audio_path)
             processing_time = time.time() - start_time
-            engine_name = "Parakeet-TDT" if self.use_nemo else "Faster-Whisper"
-            logger.info("STT transcription completed", 
-                       engine=engine_name,
-                       processing_time_seconds=processing_time,
-                       transcription_preview=str(transcription)[:50])
             
-            return str(transcription).strip()
+            text = result.get("text", "")
+            confidence = result.get("confidence", 0.0)
+            
+            logger.info("STT transcription completed",
+                       text_length=len(text),
+                       confidence=confidence,
+                       processing_time_seconds=processing_time)
+            
+            return text
             
         except Exception as e:
-            logger.error(f"STT transcription failed: {e}")
+            logger.error("STT transcription failed", error=str(e), audio_path=audio_path)
             return None
+
 
 class ProductionTTSEngine:
     """
-    Kyutai TTS-1.6B Engine - Real-Time Streaming TTS
-    Performance: 2.82% WER (beats ElevenLabs 4.05%), 220ms latency, true streaming
-    Model: kyutai/tts-1.6b-en_fr
+    Coqui XTTS v2 TTS Engine via Microservice
+    Multi-voice synthesis with voice cloning support
     """
     
-    def __init__(self):
-        self.name = "Kyutai TTS-1.6B (SOTA Real-Time)"
-        self.model = None
-        self.tokenizer = None
-        self.edge_tts = None
-        self.use_edge_fallback = False
-        self.use_real_kyutai = False
-        self.kyutai_script_path = None
+    def __init__(self, service_url: str = "http://localhost:8011"):
+        self.name = "Coqui XTTS v2 (Microservice)"
+        self.service_url = service_url
+        self.client = VoiceServiceClient(service_url)
         self.is_initialized = False
         
     async def initialize(self):
-        """Initialize the REAL Kyutai TTS-1.6B model"""
+        """Initialize TTS engine by checking service health"""
         if self.is_initialized:
             return
             
         try:
-            logger.info("Loading REAL Kyutai TTS-1.6B SOTA model")
-            start_time = time.time()
+            logger.info("Initializing TTS via voice service", service_url=self.service_url)
             
-            # Use official Kyutai implementation via uvx
-            try:
-                import os
-                import subprocess
-                
-                # Find the Kyutai repository
-                current_dir = os.path.dirname(os.path.dirname(__file__))
-                kyutai_path = os.path.join(current_dir, "kyutai-tts")
-                script_path = os.path.join(kyutai_path, "scripts", "tts_pytorch.py")
-                
-                if os.path.exists(script_path):
-                    logger.info("Found Kyutai TTS installation", path=kyutai_path)
-                    
-                    # Test if uvx and moshi work
-                    test_result = subprocess.run([
-                        "uvx", "--with", "moshi", "python", script_path,
-                        "-", "-", "--device", "cpu"
-                    ], input="test", text=True, capture_output=True, 
-                       cwd=kyutai_path, timeout=60)
-                    
-                    if test_result.returncode == 0:
-                        self.kyutai_script_path = script_path
-                        self.use_real_kyutai = True
-                        self.use_edge_fallback = False
-                        logger.info("REAL Kyutai TTS-1.6B loaded successfully via official scripts",
-                                   wer_percentage=2.82,
-                                   performance_comparison="beats ElevenLabs 4.05%",
-                                   latency_ms=220,
-                                   real_time_streaming=True)
-                    else:
-                        raise Exception(f"Kyutai test failed: {test_result.stderr}")
-                else:
-                    raise Exception(f"Kyutai scripts not found at {script_path}")
-                
-            except Exception as kyutai_error:
-                logger.warning("Kyutai TTS-1.6B failed, falling back to Edge-TTS", 
-                              error=str(kyutai_error))
-                
-                # Fallback to Edge-TTS
-                try:
-                    import edge_tts
-                    self.edge_tts = edge_tts
-                    self.use_edge_fallback = True
-                    self.use_real_kyutai = False
-                    logger.info("Edge-TTS high-quality fallback loaded successfully")
-                except ImportError:
-                    logger.error("No TTS engine available - both Kyutai and Edge-TTS failed")
-                    raise ImportError("No TTS engine available")
+            # Check if service is healthy
+            health_status = await self.client.health_check()
             
-            load_time = time.time() - start_time
-            engine_name = "REAL Kyutai TTS-1.6B" if self.use_real_kyutai else "Edge-TTS High-Quality Fallback"
-            # Update the name to reflect the actual engine being used
-            self.name = engine_name
-            logger.info("TTS engine initialized successfully", 
-                       engine=engine_name, 
-                       load_time_seconds=load_time)
-            self.is_initialized = True
-            
+            if health_status.get("status") == "healthy":
+                tts_info = health_status.get("services", {}).get("tts", {})
+                logger.info("TTS engine initialized successfully",
+                           engine=tts_info.get("engine", "Unknown"),
+                           service_status="healthy")
+                self.is_initialized = True
+            else:
+                raise Exception(f"Voice service unhealthy: {health_status}")
+                
         except Exception as e:
             logger.error("TTS initialization failed", error=str(e))
             raise
     
-    async def synthesize(self, text: str, output_path: str) -> bool:
-        """Synthesize text to speech using REAL Kyutai TTS-1.6B or Edge-TTS fallback"""
+    async def synthesize(self, text: str, output_path: str, voice_id: str = "default") -> bool:
+        """Synthesize speech from text"""
         if not self.is_initialized:
             await self.initialize()
-        
+            
         try:
             start_time = time.time()
             
-            if self.use_real_kyutai and self.kyutai_script_path:
-                # Use the REAL Kyutai TTS-1.6B model via official script
-                logger.info("Starting REAL Kyutai TTS-1.6B synthesis", 
-                           text_preview=text[:30])
-                
-                import subprocess
-                import tempfile
-                import os
-                
-                # Create temporary text file for input
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tmp_file:
-                    tmp_file.write(text)
-                    temp_text_path = tmp_file.name
-                
-                try:
-                    # Run official Kyutai TTS script with absolute paths
-                    kyutai_dir = os.path.dirname(self.kyutai_script_path)
-                    abs_output_path = os.path.abspath(output_path)
-                    
-                    result = subprocess.run([
-                        "uvx", "--with", "moshi", "python", self.kyutai_script_path,
-                        temp_text_path, abs_output_path, "--device", "cpu"
-                    ], capture_output=True, text=True, cwd=kyutai_dir, timeout=120)
-                    
-                    if result.returncode == 0:
-                        logger.info("REAL Kyutai TTS-1.6B synthesis successful")
-                    else:
-                        logger.warning("Kyutai TTS synthesis failed", stderr=result.stderr)
-                        raise Exception(f"Kyutai synthesis failed: {result.stderr}")
-                        
-                finally:
-                    # Clean up temp file
-                    if os.path.exists(temp_text_path):
-                        os.unlink(temp_text_path)
-                
-            elif self.use_edge_fallback and self.edge_tts:
-                # Use edge-tts fallback
-                logger.info("Using Edge-TTS fallback for synthesis", 
-                           text_preview=text[:30])
-                voice = "en-US-AriaNeural"  # High-quality female voice
-                
-                communicate = self.edge_tts.Communicate(text, voice)
-                await communicate.save(output_path)
-                
-            else:
-                logger.error("No TTS engine available for synthesis")
-                return False
+            # Get the output directory from the provided path
+            output_dir = Path(output_path).parent
             
-            synthesis_time = time.time() - start_time
-            engine_name = "REAL Kyutai TTS-1.6B" if self.use_real_kyutai else "Edge-TTS"
-            logger.info("TTS synthesis completed successfully",
-                       engine=engine_name,
-                       synthesis_time_seconds=synthesis_time)
+            result = await self.client.text_to_speech(
+                text=text,
+                voice_id=voice_id,
+                output_dir=output_dir
+            )
+            
+            processing_time = time.time() - start_time
+            
+            # Move the generated file to the exact requested path
+            generated_path = Path(result.get("local_audio_path", ""))
+            if generated_path.exists() and str(generated_path) != output_path:
+                Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+                generated_path.rename(output_path)
+            
+            logger.info("TTS synthesis completed",
+                       text_length=len(text),
+                       voice_id=voice_id,
+                       output_path=output_path,
+                       processing_time_seconds=processing_time)
+            
             return True
             
         except Exception as e:
-            logger.error(f"TTS synthesis failed: {e}")
+            logger.error("TTS synthesis failed", error=str(e), text_preview=text[:30])
             return False
+    
+    async def get_available_voices(self) -> Dict[str, Any]:
+        """Get list of available voices"""
+        if not self.is_initialized:
+            await self.initialize()
+            
+        try:
+            return await self.client.list_voices()
+        except Exception as e:
+            logger.error("Failed to get available voices", error=str(e))
+            return {"available_voices": {}, "error": str(e)}
 
-class SileroVAD:
+
+class ProductionVoiceFoundation:
     """
-    Silero VAD v3 - Voice Activity Detection
-    Performance: <1ms processing, enterprise-grade accuracy
+    Complete voice processing foundation using microservice architecture
+    Integrates STT and TTS via Python 3.11 voice service
     """
     
-    def __init__(self):
-        self.name = "Silero VAD v3"
-        self.model = None
+    def __init__(self, service_url: str = "http://localhost:8011", force_parakeet: bool = True):
+        self.name = "Production Voice Foundation (Microservice)"
+        self.service_url = service_url
+        self.stt = ProductionSTTEngine(service_url)
+        self.tts = ProductionTTSEngine(service_url)
         self.is_initialized = False
         
+        # Create output directory
+        self.output_dir = Path("voice_foundation/outputs")
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        
     async def initialize(self):
-        """Initialize Silero VAD"""
+        """Initialize both STT and TTS engines"""
         if self.is_initialized:
             return
             
         try:
-            logger.info("Loading Silero VAD v3")
-            self.model = silero_vad.load_silero_vad()
+            logger.info("Initializing Production Voice Foundation", service_url=self.service_url)
+            
+            # Initialize STT engine
+            await self.stt.initialize()
+            
+            # Initialize TTS engine
+            await self.tts.initialize()
+            
             self.is_initialized = True
-            logger.info("Silero VAD v3 ready")
             
+            logger.info("Production Voice Foundation initialized successfully",
+                       stt_engine=self.stt.name,
+                       tts_engine=self.tts.name,
+                       service_url=self.service_url)
+                       
         except Exception as e:
-            logger.error(f"VAD initialization failed: {e}")
-            
-    def detect_speech(self, audio_chunk: np.ndarray, sample_rate: int = 16000) -> bool:
-        """Detect if audio chunk contains speech"""
-        if not self.is_initialized:
-            return True  # Default to true if VAD not ready
-            
+            logger.error("Voice foundation initialization failed", error=str(e))
+            raise
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Check health of voice processing services"""
         try:
-            # Convert to tensor if needed
-            if isinstance(audio_chunk, np.ndarray):
-                audio_tensor = torch.from_numpy(audio_chunk.astype(np.float32))
-            else:
-                audio_tensor = audio_chunk
-                
-            # Detect speech
-            speech_prob = silero_vad.get_speech_timestamps(
-                audio_tensor, self.model, sampling_rate=sample_rate
-            )
+            client = VoiceServiceClient(self.service_url)
+            health_status = await client.health_check()
             
-            return len(speech_prob) > 0
+            return {
+                "status": "healthy" if health_status.get("status") == "healthy" else "unhealthy",
+                "foundation": self.name,
+                "service_url": self.service_url,
+                "details": health_status
+            }
             
         except Exception as e:
-            logger.error(f"VAD detection failed: {e}")
-            return True
-
-class ProductionVoiceFoundation:
-    """
-    Production Voice Foundation with SOTA models (2025)
-    - Faster-Whisper Large-v3-Turbo (STT) - Proven SOTA performance
-    - Edge-TTS/Kyutai (TTS) - High-quality synthesis
-    - Silero VAD v3 (Voice Activity Detection)
+            return {
+                "status": "unhealthy",
+                "foundation": self.name,
+                "service_url": self.service_url,
+                "error": str(e)
+            }
     
-    Note: This achieves SOTA performance while maintaining Windows compatibility
-    """
-    
-    def __init__(self, force_parakeet=True):
-        self.stt = ProductionSTTEngine(force_parakeet=force_parakeet)
-        self.tts = ProductionTTSEngine()
-        self.vad = SileroVAD()
-        self.is_initialized = False
-        
-    async def initialize(self):
-        """Initialize all voice components"""
-        logger.info("Initializing Production Voice Foundation SOTA Pipeline 2025")
-        start_time = time.time()
-        
-        # Initialize all components
-        await asyncio.gather(
-            self.stt.initialize(),
-            self.tts.initialize(),
-            self.vad.initialize()
-        )
-        
-        self.is_initialized = True
-        init_time = time.time() - start_time
-        logger.info("Production Voice Foundation ready",
-                   init_time_seconds=init_time,
-                   stt_engine=self.stt.name,
-                   tts_engine=self.tts.name, 
-                   vad_engine=self.vad.name,
-                   cost_per_hour=0,
-                   performance_level="SOTA")
-        
     async def process_audio_to_text(self, audio_path: str) -> Optional[str]:
-        """Convert audio file to text using SOTA STT"""
+        """Convert audio file to text using STT"""
         if not self.is_initialized:
             await self.initialize()
             
-        logger.info("Processing audio with SOTA STT", audio_path=audio_path)
+        logger.info("Processing audio with STT", audio_path=audio_path)
         return await self.stt.transcribe(audio_path)
-        
-    async def process_text_to_audio(self, text: str, output_path: str) -> bool:
-        """Convert text to audio using SOTA TTS"""
+    
+    async def process_text_to_audio(self, text: str, output_path: Optional[str] = None, voice_id: str = "default") -> Optional[str]:
+        """Convert text to audio using TTS"""
         if not self.is_initialized:
             await self.initialize()
             
-        logger.info("Synthesizing with SOTA TTS", text_preview=text[:30])
-        return await self.tts.synthesize(text, output_path)
+        if not output_path:
+            output_path = str(self.output_dir / f"tts_{uuid.uuid4()}.wav")
+        
+        logger.info("Synthesizing with TTS", text_preview=text[:30], voice_id=voice_id)
+        
+        success = await self.tts.synthesize(text, output_path, voice_id)
+        return output_path if success else None
+    
+    async def get_available_voices(self) -> Dict[str, Any]:
+        """Get available voice configurations"""
+        if not self.is_initialized:
+            await self.initialize()
+            
+        return await self.tts.get_available_voices()
+
 
 # Compatibility function for existing code
-async def create_voice_foundation(use_production=True, force_parakeet=True):
-    """Create either production or mock voice foundation"""
+async def create_voice_foundation(use_production=True, force_parakeet=True, service_url="http://localhost:8011"):
+    """Create production voice foundation using microservice architecture"""
     if use_production:
-        foundation = ProductionVoiceFoundation(force_parakeet=force_parakeet)
+        foundation = ProductionVoiceFoundation(service_url=service_url, force_parakeet=force_parakeet)
     else:
         # Fall back to mock for testing
         from .simple_voice_pipeline import VoiceFoundation
@@ -429,3 +267,7 @@ async def create_voice_foundation(use_production=True, force_parakeet=True):
     
     await foundation.initialize()
     return foundation
+
+
+# Legacy compatibility for any old imports
+ProductionVADEngine = None  # VAD now handled by the voice service

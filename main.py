@@ -49,7 +49,7 @@ from middleware import (
 from middleware.rate_limiting import RateLimit
 from middleware.request_validation import ValidationConfig
 from middleware.security_headers import ProductionSecurityConfig, SecurityConfig
-from voice_foundation.orchestrator_integration import get_voice_orchestrator
+from voice_foundation.orchestrator_integration import get_initialized_voice_orchestrator
 from utils.websocket_utils import active_connections
 
 # Global state
@@ -122,9 +122,11 @@ async def lifespan(app: FastAPI):
     
     # Initialize voice foundation
     try:
-        voice_orch = get_voice_orchestrator()
-        await voice_orch.initialize()
-        logger.info("Voice Foundation initialized successfully")
+        voice_orch = await get_initialized_voice_orchestrator()
+        if voice_orch is not None:
+            logger.info("Voice Foundation initialized successfully")
+        else:
+            logger.warning("Voice Foundation initialization failed - voice endpoints will be disabled")
     except Exception as e:
         logger.warning("Voice Foundation initialization failed - voice endpoints may not work", error=str(e))
     

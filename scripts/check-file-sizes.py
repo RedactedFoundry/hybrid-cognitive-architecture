@@ -20,8 +20,7 @@ from typing import List, Tuple, Dict
 # File exclusions per .cursorrules
 EXCLUDED_DIRS = {
     '.git', 'venv', '.venv', 'env', '.env', 
-    '__pycache__', '.pytest_cache', 'node_modules',
-    'kyutai-tts'  # External submodule
+    '__pycache__', '.pytest_cache', 'node_modules'
 }
 
 MAX_LINES = 500

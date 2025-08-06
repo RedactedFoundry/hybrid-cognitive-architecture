@@ -23,7 +23,7 @@ from core.error_boundaries import (
     ProcessingError, 
     error_boundary
 )
-from voice_foundation.orchestrator_integration import get_voice_orchestrator
+from voice_foundation.orchestrator_integration import get_initialized_voice_orchestrator
 
 # Set up logger
 logger = structlog.get_logger(__name__)
@@ -56,7 +56,16 @@ async def handle_voice_input(websocket: WebSocket, data: dict, conversation_id: 
         os.rename(temp_audio_path, wav_path)
         
         # Process through voice foundation (STT)
-        voice_orch = get_voice_orchestrator()
+        voice_orch = await get_initialized_voice_orchestrator()
+        
+        if voice_orch is None or voice_orch.voice_foundation is None:
+            logger.error("Voice orchestrator not available")
+            await websocket.send_json({
+                "type": "error",
+                "message": "Voice service not available - please try again later"
+            })
+            return
+            
         transcription = await voice_orch.voice_foundation.process_audio_to_text(wav_path)
         
         if transcription:

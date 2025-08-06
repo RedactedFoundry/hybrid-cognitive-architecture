@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "core"}, {include = "clients"}, {include = "schemas"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.13"
 # Core web framework and async support
 fastapi = "^0.104.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
@@ -45,19 +45,11 @@ numpy = "^1.25.0"
 # Configuration management
 pyyaml = "^6.0"
 
-# Ollama client for multi-model LLM serving
+# Ollama client for multi-model LLM serving  
 # Will use OpenAI-compatible API via HTTP requests (aiohttp already included)
 python-multipart = "^0.0.20"
-torch = "^2.7.1"
-torchaudio = "^2.7.1"
-silero-vad = "^5.1.2"
-transformers = "^4.54.1"
-nemo-toolkit = "^2.4.0"
-hydra-core = "^1.3.2"
-pytorch-lightning = "^2.5.2"
-lightning = "^2.5.2"
-lhotse = "^1.30.3"
-jiwer = "^4.0.0"
+
+# NOTE: All voice processing dependencies moved to python311-services/
 
 [tool.poetry.group.dev.dependencies]
 # Testing framework

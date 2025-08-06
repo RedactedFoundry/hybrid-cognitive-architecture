@@ -197,6 +197,80 @@ def start_ollama():
         print(f"❌ Ollama startup failed: {e}")
         return False
 
+def start_voice_service():
+    """Start the Python 3.11 voice microservice."""
+    logger.info("Step 8: Starting Voice Service")
+    print("🎤 Starting Voice Service (Python 3.11)...")
+    
+    try:
+        # Check if voice service is already running
+        try:
+            import requests
+            response = requests.get("http://localhost:8011/health", timeout=2)
+            if response.status_code == 200:
+                print("✅ Voice service already running at http://localhost:8011")
+                return True
+        except:
+            pass
+        
+        # Start voice service in background
+        voice_dir = project_root / "python311-services"
+        if not voice_dir.exists():
+            print("❌ Voice service directory not found: python311-services/")
+            return False
+        
+        print("🔄 Starting voice service in background...")
+        
+        # On Windows, use the Python 3.11 environment
+        if os.name == 'nt':  # Windows
+            # Activate Python 3.11 environment and start voice service
+            voice_script = f"""
+cd {voice_dir}
+source C:/Users/Jake/AppData/Local/pypoetry/Cache/virtualenvs/python311-services-A1b0dxtl-py3.11/Scripts/activate
+python voice/main.py
+"""
+            # Write temporary script
+            temp_script = project_root / "temp_start_voice.bat"
+            with open(temp_script, 'w') as f:
+                f.write(voice_script)
+            
+            # Start in background
+            subprocess.Popen(["cmd", "/c", str(temp_script)], 
+                           cwd=str(project_root),
+                           stdout=subprocess.DEVNULL, 
+                           stderr=subprocess.DEVNULL)
+        else:  # Linux/Mac
+            subprocess.Popen([
+                "bash", "-c", 
+                f"cd {voice_dir} && source venv/bin/activate && python voice/main.py"
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Wait for voice service to be ready
+        print("⏳ Waiting for voice service to be ready...")
+        for i in range(30):  # 30 second timeout
+            time.sleep(1)
+            try:
+                import requests
+                response = requests.get("http://localhost:8011/health", timeout=2)
+                if response.status_code == 200:
+                    data = response.json()
+                    stt_status = data.get('services', {}).get('stt', {}).get('initialized', False)
+                    tts_status = data.get('services', {}).get('tts', {}).get('initialized', False)
+                    if stt_status and tts_status:
+                        print("✅ Voice service ready (STT & TTS initialized)")
+                        return True
+                    else:
+                        print("⏳ Voice service starting (engines initializing)...")
+            except:
+                pass
+        
+        print("⚠️ Voice service may still be starting - check http://localhost:8011/health")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Voice service startup failed: {e}")
+        return False
+
 def wait_for_services():
     """Wait for all services to be fully ready."""
     logger.info("Step 5: Waiting for services to be ready")
@@ -337,16 +411,16 @@ def start_api_server(start_api=False):
     if not start_api:
         return True
         
-    logger.info("Step 8: Starting API server")
+    logger.info("Step 9: Starting API server")
     print("🌐 Starting FastAPI server...")
     
     try:
         # Check if API is already running
         try:
             import requests
-            response = requests.get("http://localhost:8000/health", timeout=2)
+            response = requests.get("http://localhost:8001/health", timeout=2)
             if response.status_code == 200:
-                print("✅ API server already running at http://localhost:8000")
+                print("✅ API server already running at http://localhost:8001")
                 return True
         except:
             pass
@@ -356,12 +430,12 @@ def start_api_server(start_api=False):
         if os.name == 'nt':  # Windows
             subprocess.Popen([
                 sys.executable, "-m", "uvicorn", "main:app", 
-                "--host", "127.0.0.1", "--port", "8000"
+                "--host", "127.0.0.1", "--port", "8001", "--timeout-keep-alive", "5"
             ], cwd=str(project_root))
         else:  # Linux/Mac
             subprocess.Popen([
                 sys.executable, "-m", "uvicorn", "main:app", 
-                "--host", "127.0.0.1", "--port", "8000"
+                "--host", "127.0.0.1", "--port", "8001", "--timeout-keep-alive", "5"
             ], cwd=str(project_root), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # Wait and verify the server actually started
@@ -370,15 +444,16 @@ def start_api_server(start_api=False):
             time.sleep(1)
             try:
                 import requests
-                response = requests.get("http://localhost:8000/health", timeout=2)
+                response = requests.get("http://localhost:8001/health", timeout=2)
                 if response.status_code == 200:
-                    print("✅ API server is ready at http://localhost:8000")
-                    print("🌐 UI available at: http://localhost:8000/static/index.html")
+                    print("✅ API server is ready at http://localhost:8001")
+                    print("🌐 UI available at: http://localhost:8001/static/index.html")
+                    print("🎤 Voice chat at: http://localhost:8001/realtime-voice.html")
                     return True
             except:
                 pass
         
-        print("⚠️ API server may still be starting - check http://localhost:8000")
+        print("⚠️ API server may still be starting - check http://localhost:8001")
         return True
         
     except Exception as e:
@@ -395,14 +470,22 @@ def print_summary():
     print("   • TigerGraph Community Edition: http://localhost:14240")
     print("   • Redis Cache: localhost:6379")
     print("   • Ollama LLM Service: localhost:11434")
+    print("   • Voice Service (STT/TTS): http://localhost:8011")
     print("   • Graph Database: HybridAICouncil")
+    print()
+    print("🌐 Web Interfaces:")
+    print("   • Main Dashboard: http://localhost:8001/")
+    print("   • Voice Chat: http://localhost:8001/realtime-voice.html")
+    print("   • Voice Service Health: http://localhost:8011/health")
     print()
     print("🔧 Development Commands:")
     print("   • System Status: python verify_system.py")
-    print("   • Start API: uvicorn main:app --host 127.0.0.1 --port 8000")
+    print("   • Start API: uvicorn main:app --host 127.0.0.1 --port 8001")
+    print("   • Start Voice: cd python311-services && python voice/main.py")
     print("   • View Logs: docker-compose logs -f")
     print()
     print("🚀 Your Hybrid AI Council is ready for action!")
+    print("🎤 Voice chat is now available!")
     print("="*60)
 
 def master_startup(with_api=False, skip_verify=False, quiet=False):
@@ -439,7 +522,11 @@ def master_startup(with_api=False, skip_verify=False, quiet=False):
     if not verify_system(skip_verify):
         return False
     
-    # Step 8: Optional API server
+    # Step 8: Voice Service (always start)
+    if not start_voice_service():
+        return False
+    
+    # Step 9: Optional API server
     if not start_api_server(with_api):
         return False
     
