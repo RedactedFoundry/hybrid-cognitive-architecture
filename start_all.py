@@ -12,7 +12,7 @@ This will start:
 1. Docker service check
 2. TigerGraph Community Edition
 3. Redis cache
-4. Ollama LLM service
+4. Ollama LLM service (auto-start if needed)
 5. Database initialization
 6. Voice Service (Python 3.11)
 7. Main API Server (Python 3.13)
@@ -28,6 +28,7 @@ import sys
 import os
 import subprocess
 import time
+import signal
 from pathlib import Path
 
 def run_command(cmd, description, check=True, capture_output=False):
@@ -54,6 +55,126 @@ def check_docker_container(container_name):
         return result.returncode == 0
     except Exception as e:
         print(f"⚠️ Docker check error for {container_name}: {e}")
+        return False
+
+def check_ollama_health():
+    """Check if Ollama is running and healthy"""
+    try:
+        import requests
+        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            models = data.get('models', [])
+            return True, len(models), models
+        return False, 0, []
+    except Exception as e:
+        return False, 0, []
+
+def start_ollama_service():
+    """Start Ollama if not running, with proper error handling"""
+    print("🤖 Starting Ollama LLM service...")
+    
+    # First check if Ollama is already running
+    is_healthy, model_count, models = check_ollama_health()
+    if is_healthy:
+        print(f"✅ Ollama already running with {model_count} models")
+        for model in models:
+            print(f"   • {model.get('name', 'Unknown')}")
+        return True
+    
+    # Check if Ollama is installed
+    try:
+        result = subprocess.run(["ollama", "--version"], capture_output=True, text=True)
+        if result.returncode != 0:
+            print("❌ Ollama not installed. Please install from https://ollama.ai")
+            print("💡 Windows: Download from https://ollama.ai/download")
+            return False
+    except FileNotFoundError:
+        print("❌ Ollama not found in PATH. Please install from https://ollama.ai")
+        return False
+    
+    # Start Ollama service
+    print("🔄 Starting Ollama service...")
+    try:
+        # Start Ollama in background
+        if os.name == 'nt':  # Windows
+            # Use subprocess.Popen with shell=True for Windows
+            process = subprocess.Popen(
+                ["ollama", "serve"], 
+                stdout=subprocess.DEVNULL, 
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_CONSOLE
+            )
+        else:  # Linux/Mac
+            process = subprocess.Popen(
+                ["ollama", "serve"], 
+                stdout=subprocess.DEVNULL, 
+                stderr=subprocess.DEVNULL
+            )
+        
+        print("⏳ Waiting for Ollama to start...")
+        
+        # Wait for Ollama to be ready (up to 30 seconds)
+        for i in range(30):
+            time.sleep(1)
+            is_healthy, model_count, models = check_ollama_health()
+            if is_healthy:
+                print(f"✅ Ollama started successfully with {model_count} models")
+                for model in models:
+                    print(f"   • {model.get('name', 'Unknown')}")
+                return True
+            elif i % 5 == 0:  # Show progress every 5 seconds
+                print(f"⏳ Still waiting for Ollama... ({i+1}/30)")
+        
+        print("❌ Ollama failed to start within 30 seconds")
+        return False
+        
+    except Exception as e:
+        print(f"❌ Failed to start Ollama: {e}")
+        return False
+
+def verify_ollama_models():
+    """Verify that required models are available"""
+    print("📦 Verifying Ollama models...")
+    
+    try:
+        import requests
+        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            models = data.get('models', [])
+            print(f"📋 Available models: {len(models)}")
+            for model in models:
+                print(f"   • {model.get('name', 'Unknown')}")
+            
+            # Check if required models are available
+            required_models = [
+                "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M",  # mistral-council
+                "hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M",          # qwen3-council  
+                "deepseek-coder:6.7b-instruct"                             # deepseek-council
+            ]
+            model_aliases = ["mistral-council", "qwen3-council", "deepseek-council"]
+            
+            all_models_available = True
+            for i, model in enumerate(required_models):
+                alias = model_aliases[i]
+                if any(m.get('name') == model for m in models):
+                    print(f"✅ Model available: {alias}")
+                else:
+                    print(f"❌ Model missing: {alias}")
+                    all_models_available = False
+            
+            if all_models_available:
+                print("🎉 All required models are available!")
+                return True
+            else:
+                print("⚠️ Some models are missing, but continuing...")
+                return False
+        else:
+            print("❌ Failed to get model list from Ollama")
+            return False
+    except Exception as e:
+        print(f"⚠️ Error checking models: {e}")
         return False
 
 def check_tigergraph_ready():
@@ -99,58 +220,14 @@ def start_services():
     else:
         print("✅ Redis already running")
     
-    # Step 4: Check Ollama (local installation)
-    print("\n🤖 Step 3: Checking Ollama...")
-    try:
-        import requests
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            models = data.get('models', [])
-            print(f"✅ Ollama is running with {len(models)} models")
-            for model in models:
-                print(f"   • {model.get('name', 'Unknown')}")
-        else:
-            print("⚠️ Ollama may not be fully ready")
-    except Exception as e:
-        print(f"⚠️ Ollama check failed: {e}")
-        print("💡 Make sure Ollama is running locally: ollama serve")
+    # Step 4: Start Ollama (with auto-start)
+    print("\n🤖 Step 3: Starting Ollama...")
+    if not start_ollama_service():
+        print("⚠️ Ollama startup failed, but continuing...")
     
     # Step 4.5: Verify Ollama models
     print("\n📦 Step 3.5: Verifying Ollama models...")
-    try:
-        import requests
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            models = data.get('models', [])
-            print(f"📋 Available models: {len(models)}")
-            for model in models:
-                print(f"   • {model.get('name', 'Unknown')}")
-            
-            # Check if required models are available
-            required_models = [
-                "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M",  # mistral-council
-                "hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M",          # qwen3-council  
-                "deepseek-coder:6.7b-instruct"                             # deepseek-council
-            ]
-            model_aliases = ["mistral-council", "qwen3-council", "deepseek-council"]
-            
-            all_models_available = True
-            for i, model in enumerate(required_models):
-                alias = model_aliases[i]
-                if any(m.get('name') == model for m in models):
-                    print(f"✅ Model available: {alias}")
-                else:
-                    print(f"❌ Model missing: {alias}")
-                    all_models_available = False
-            
-            if all_models_available:
-                print("🎉 All required models are available!")
-            else:
-                print("⚠️ Some models are missing, but continuing...")
-    except Exception as e:
-        print(f"⚠️ Error checking models: {e}")
+    verify_ollama_models()
     
     # Step 5: Initialize TigerGraph database
     print("\n🗄️ Step 4: Initializing TigerGraph database...")
