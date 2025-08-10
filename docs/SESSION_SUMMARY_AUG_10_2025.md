@@ -58,11 +58,33 @@ The system now follows a clean **Constitution v5.4** architecture:
 - Total VRAM: 21.3 GB / 24.5 GB (86.6%) → healthy headroom
 - **Root Cause Fixed**: OllamaClient now forces `num_ctx: 8192` in all API calls
 
+## 🗄️ Smart TigerGraph Initialization
+
+**Issue Resolved**: TigerGraph initialization throwing errors when graphs already existed.
+
+**Root Cause**: 
+- Poor separation of concerns: `start_all.py` had hardcoded schema expectations
+- Unreliable detection: `conn.getVertexTypes()` returned empty arrays even with loaded schema
+- Error-prone recreation: Attempted to recreate existing graphs causing conflicts
+
+**Solution**:
+- **Modular Architecture**: Created `is_graph_initialized()` in `clients/tigervector_client.py`
+- **Reliable Detection**: Use `conn.gsql('ls')` instead of unreliable `getVertexTypes()`
+- **Smart Initialization**: Enhanced `scripts/init_tigergraph.py` with existing schema detection
+- **Clean Orchestration**: `start_all.py` delegates to component expertise
+
+**Result**: 
+- ✅ No more TigerGraph errors on startup
+- ✅ Proper detection of all 10 vertices (Person, AIPersona, etc.)
+- ✅ Intelligent skipping of existing schema recreation
+- ✅ Clean modular architecture
+
 ## 🔗 Branch Status
 
 **llm-experiment branch** is now:
 - ✅ Constitution v5.4 compliant
 - ✅ VRAM optimized 
+- ✅ TigerGraph initialization bulletproof
 - ✅ Production ready
 - ✅ All legacy multi-agent complexity removed
 - ✅ Clean generator-verifier architecture
