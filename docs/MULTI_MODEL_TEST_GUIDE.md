@@ -2,10 +2,9 @@
 
 ## 🎯 **Testing Different Cognitive Layers**
 
-### **Available Models Confirmed:**
-- ✅ **Qwen3-14B** (Analytical Agent): `hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M`
-- ✅ **DeepSeek-Coder-6.7B** (Creative Agent): `deepseek-coder:6.7b-instruct`  
-- ✅ **Mistral-7B** (Coordinator Agent): `hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M`
+### **Available Models Confirmed (2-model experiment):**
+- ✅ **Generator**: `huihui-oss20b` (HuiHui GPT-OSS 20B MXFP4_MOE)
+- ✅ **Verifier/Coordinator**: `hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M`
 
 ### **Smart Router Classification Rules:**
 
@@ -20,7 +19,7 @@ Trigger patterns:
 - "Who is the CEO of Google?"
 - "How do I tie my shoes?"
 
-#### **Complex Reasoning (→ Council Deliberation - All 3 Models)**
+#### **Complex Reasoning (→ Council Deliberation - Generator + Verifier)**
 Trigger patterns:
 - `Compare`, `Pros and cons`, `Should I...?`, `Analyze`
 - `How does X affect Y?`, `Why does...?`, `In depth...`
@@ -84,7 +83,7 @@ Exploratory: "Find connections between user engagement and revenue patterns"
 - Single model inference
 - Direct answer
 
-### **Council Deliberation (All 3 Models):**
+### **Council Deliberation (Generator + Verifier):**
 - Processing time: 15-60 seconds
 - Multiple model inferences:
   - Qwen3 (Analytical): Logical breakdown
@@ -103,10 +102,9 @@ Exploratory: "Find connections between user engagement and revenue patterns"
 
 Check server logs for evidence of different models:
 ```bash
-# Look for these patterns in logs:
-- "model": "qwen3-council" (Analytical)
-- "model": "deepseek-council" (Creative)  
-- "model": "mistral-council" (Coordinator)
+- # Look for these patterns in logs:
+- "model": "huihui-oss20b" (Generator)
+- "model": "mistral-council" (Verifier/Coordinator)
 - "Starting multi-agent council deliberation"
 - "Phase 1: Gathering concurrent agent responses"
 ```

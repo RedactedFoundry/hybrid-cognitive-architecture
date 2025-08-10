@@ -158,10 +158,17 @@ install-hooks:
 	pre-commit install
 
 models:
-	@echo "🤖 Pulling required models..."
-	docker exec ollama ollama pull qwen2.5:14b
-	docker exec ollama ollama pull deepseek-coder:6.7b  
-	docker exec ollama ollama pull mistral:7b
+	@echo "🤖 Preparing required models (2-model architecture)..."
+	@echo "   - Generator (local): huihui-oss20b via Modelfile"
+	@echo "   - Verifier: hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"
+	@echo ""
+	@echo "Windows (PowerShell) commands:"
+	@echo "  & 'C:\\Users\\Jake\\AppData\\Local\\Programs\\Ollama\\ollama.exe' create huihui-oss20b -f '$(CURDIR)\\ollama\\Modelfile.huihui-oss20b'"
+	@echo "  & 'C:\\Users\\Jake\\AppData\\Local\\Programs\\Ollama\\ollama.exe' pull hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"
+	@echo ""
+	@echo "Linux/macOS:"
+	@echo "  ollama create huihui-oss20b -f ollama/Modelfile.huihui-oss20b"
+	@echo "  ollama pull hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"
 
 # Quick Development Workflow
 dev: clean services test-quick

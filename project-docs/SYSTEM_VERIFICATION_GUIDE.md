@@ -49,7 +49,7 @@ docker ps
 
 # Check Ollama is running
 ollama list
-# Should show: mistral-council, qwen3, deekseek-coder models
+# Should show: huihui-oss20b (generator), mistral-council (verifier)
 
 # Quick status summary
 echo "🔍 Service Status Summary:"
@@ -473,7 +473,8 @@ docker logs tigergraph
 
 # If Ollama connection fails:
 ollama serve
-ollama pull mistral-council
+ollama create huihui-oss20b -f ollama/Modelfile.huihui-oss20b
+ollama pull hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M
 ```
 
 ### Database Issues
