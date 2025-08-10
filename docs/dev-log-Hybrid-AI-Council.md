@@ -316,9 +316,9 @@ Production-Ready AI Council:
 ```bash
 ✅ Ollama connectivity: WORKING
 ✅ Individual model tests: ALL PASSED
-    - qwen3-council: 4.14s per 100 tokens
-    - deepseek-council: 0.54s per 100 tokens (fastest!)
-    - mistral-council: 2.24s per 100 tokens
+    - qwen3-council: 4.14s per 100 tokens (historical - now huihui-generator)
+    - deepseek-council: 0.54s per 100 tokens (historical - now huihui-creative)
+    - mistral-council: 2.24s per 100 tokens (now mistral-verifier)
 ✅ Full AI Council deliberation: 40.87s total processing
     - 2 agents participated, 2896 tokens processed
     - 85% confidence, analytical_agent winner
@@ -491,9 +491,9 @@ for agent_name, task in agent_tasks:
 - **Concurrent Processing**: True parallel execution restored
 
 **Model Performance (Individual):**
-- **qwen3-council**: ~4.14s per 100 tokens (Analytical)
-- **deepseek-council**: ~0.54s per 100 tokens (Creative - fastest!)
-- **mistral-council**: ~2.24s per 100 tokens (Coordinator)
+- **qwen3-council**: ~4.14s per 100 tokens (Analytical) [Historical - now huihui-generator]
+- **deepseek-council**: ~0.54s per 100 tokens (Creative - fastest!) [Historical - now huihui-creative]
+- **mistral-council**: ~2.24s per 100 tokens (Coordinator) [Now mistral-verifier]
 
 ### 🔧 **Technical Infrastructure Completed**
 

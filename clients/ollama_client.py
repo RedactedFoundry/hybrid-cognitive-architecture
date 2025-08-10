@@ -150,7 +150,8 @@ class OllamaClient:
                     "num_predict": max_tokens,
                     "temperature": temperature,
                     "top_p": 0.9,
-                    "top_k": 40
+                    "top_k": 40,
+                    "num_ctx": 8192  # Force reasonable context window (prevents VRAM bloat)
                 },
                 "stream": False  # Get complete response, not streaming
             }
@@ -274,7 +275,7 @@ class OllamaClient:
         
         Args:
             prompt: The input prompt for the model
-            model_alias: Alias of the model to use (e.g., 'qwen3-council')
+            model_alias: Alias of the model to use (e.g., 'mistral-verifier')
             system_prompt: System prompt to set model behavior
             max_tokens: Maximum tokens to generate
             temperature: Sampling temperature
@@ -305,7 +306,8 @@ class OllamaClient:
                     "num_predict": max_tokens,
                     "temperature": temperature,
                     "top_p": 0.9,
-                    "top_k": 40
+                    "top_k": 40,
+                    "num_ctx": 8192  # Force reasonable context window (prevents VRAM bloat)
                 },
                 "stream": True  # Enable streaming response
             }

@@ -16,7 +16,7 @@ from typing import Optional, Dict, Any
 
 import structlog
 
-from config.models import COORDINATOR_MODEL
+from config.models import CouncilModels
 
 logger = structlog.get_logger("verifier")
 
@@ -125,20 +125,18 @@ def violates_safety_floor(result: VerifierResult) -> bool:
     return False
 
 
-async def run_verifier(ollama_client, generated_text: str, timeout_seconds: float = 20.0) -> VerifierResult:
+async def run_verifier(router, generated_text: str, timeout_seconds: float = 20.0) -> VerifierResult:
     """Run verifier using the coordinator (Mistral) and return parsed result."""
     prompt = _build_verifier_input(generated_text)
     try:
-        response = await ollama_client.generate_response(
+        response = await router.generate(
+            model_alias=CouncilModels.VERIFIER_MODEL,
             prompt=prompt,
-            model_alias=COORDINATOR_MODEL,
-            system_prompt="Return JSON only. No prose.",
             max_tokens=200,
-            temperature=0.0,
-            timeout=timeout_seconds,
+            temperature=0.0
         )
-        data = _parse_verifier_json(response.text)
-        result = _coerce_result(response.text, data)
+        data = _parse_verifier_json(response["content"])
+        result = _coerce_result(response["content"], data)
         logger.info(
             "verifier_completed",
             action=result.action,

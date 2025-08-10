@@ -13,10 +13,11 @@ This will start:
 2. TigerGraph Community Edition
 3. Redis cache
 4. Ollama LLM service (auto-start if needed)
-5. Database initialization
-6. Voice Service (Python 3.11)
-7. Main API Server (Python 3.13)
-8. System verification
+5. llama.cpp server for HuiHui GPT-OSS 20B (auto-start if needed)
+6. Database initialization
+7. Voice Service (Python 3.11)
+8. Main API Server (Python 3.13)
+9. System verification
 
 All services will be available at:
 - Main Dashboard: http://localhost:8001/static/index.html
@@ -55,6 +56,21 @@ def check_docker_container(container_name):
         return result.returncode == 0
     except Exception as e:
         print(f"⚠️ Docker check error for {container_name}: {e}")
+        return False
+
+def cleanup_docker_container(container_name):
+    """Remove existing Docker container if it exists"""
+    try:
+        # Check if container exists (running or stopped)
+        result = subprocess.run(f"docker ps -a --format '{{{{.Names}}}}' | grep ^{container_name}$", 
+                              shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"🧹 Removing existing {container_name} container...")
+            subprocess.run(f"docker rm -f {container_name}", shell=True, check=False)
+            return True
+        return False
+    except Exception as e:
+        print(f"⚠️ Container cleanup error for {container_name}: {e}")
         return False
 
 def check_ollama_health():
@@ -133,6 +149,135 @@ def start_ollama_service():
         print(f"❌ Failed to start Ollama: {e}")
         return False
 
+def setup_tigergraph_auth():
+    """Set up TigerGraph authentication with environment variable password"""
+    print("🔐 Setting up TigerGraph authentication...")
+    
+    # Get password from environment variable (REQUIRED)
+    new_password = os.getenv("TIGERGRAPH_PASSWORD")
+    if not new_password:
+        print("   ❌ TIGERGRAPH_PASSWORD environment variable not set!")
+        print("   💡 Please set TIGERGRAPH_PASSWORD in your .env file")
+        return False
+    
+    try:
+        # Connect to TigerGraph container and change password
+        change_password_cmd = f'''docker exec tigergraph bash -c "
+            gsql 'ALTER PASSWORD tigergraph' <<< $'tigergraph\\n{new_password}\\n{new_password}'
+        "'''
+        
+        result = subprocess.run(change_password_cmd, shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"   ✅ TigerGraph password updated")
+            return True
+        else:
+            print(f"   ⚠️ Password change failed: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        print(f"   ⚠️ TigerGraph auth setup error: {e}")
+        return False
+
+def cleanup_unused_models():
+    """Unload unused models from VRAM for this experimental branch"""
+    print("🧹 Unloading unused models from VRAM...")
+    
+    models_to_unload = [
+        "deepseek-coder:6.7b-instruct", 
+        "hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M"
+    ]
+    
+    try:
+        import requests
+        for model in models_to_unload:
+            payload = {
+                "model": model,
+                "prompt": "",
+                "keep_alive": 0
+            }
+            response = requests.post("http://localhost:11434/api/generate", 
+                                   json=payload, timeout=10)
+            if response.status_code == 200:
+                print(f"   ✅ Unloaded {model} from VRAM")
+            else:
+                print(f"   ⚠️ Failed to unload {model}")
+    except Exception as e:
+        print(f"   ⚠️ Model cleanup error: {e}")
+    
+    print("💾 Keeping only HuiHui + Mistral warm in VRAM")
+
+def start_llama_cpp_server():
+    """Start llama.cpp server for HuiHui model if not running"""
+    print("🚀 Starting llama.cpp server for HuiHui GPT-OSS 20B...")
+    
+    # Check if already running
+    try:
+        import requests
+        response = requests.get("http://127.0.0.1:8081/health", timeout=5)
+        if response.status_code == 200:
+            print("✅ llama.cpp server is already running")
+            return True
+    except:
+        pass
+    
+    # Check if llama.cpp exists
+    llama_cpp_path = Path("D:/llama.cpp")
+    if not llama_cpp_path.exists():
+        print("❌ D:/llama.cpp directory not found.")
+        print("💡 Please install llama.cpp from: https://github.com/ggerganov/llama.cpp/releases")
+        return False
+    
+    server_exe = llama_cpp_path / "llama-server.exe"
+    if not server_exe.exists():
+        print("❌ llama-server.exe not found in D:/llama.cpp")
+        return False
+    
+    model_path = "D:/.ollama/models/huihui-oss/huihui-ai_Huihui-gpt-oss-20b-BF16-abliterated-MXFP4_MOE.gguf"
+    if not Path(model_path).exists():
+        print(f"❌ HuiHui model not found at {model_path}")
+        return False
+    
+    try:
+        # Start llama.cpp server with proper settings
+        cmd = [
+            str(server_exe),
+            "-m", model_path,
+            "-c", "8192",           # Context window
+            "-ngl", "48",           # GPU layers
+            "--port", "8081",       # Port
+            "--host", "127.0.0.1",  # Host
+            "--chat-template", "gpt-oss"  # CRITICAL: Chat template for proper formatting
+        ]
+        
+        print(f"   Command: {' '.join(cmd)}")
+        
+        # Start in background
+        process = subprocess.Popen(cmd, cwd=llama_cpp_path, 
+                                 stdout=subprocess.DEVNULL, 
+                                 stderr=subprocess.DEVNULL)
+        
+        # Wait for server to be ready
+        for i in range(60):  # 2 minutes max
+            time.sleep(2)
+            try:
+                import requests
+                response = requests.get("http://127.0.0.1:8081/health", timeout=5)
+                if response.status_code == 200:
+                    print("✅ llama.cpp server started successfully")
+                    print("🎯 HuiHui GPT-OSS 20B ready with gpt-oss chat template")
+                    return True
+            except:
+                pass
+            if i % 15 == 0:  # Show progress every 30 seconds
+                print(f"⏳ Waiting for llama.cpp server... ({i+1}/60)")
+        
+        print("❌ llama.cpp server failed to start within 2 minutes")
+        return False
+        
+    except Exception as e:
+        print(f"❌ Failed to start llama.cpp server: {e}")
+        return False
+
 def verify_ollama_models():
     """Verify that required models are available"""
     print("📦 Verifying Ollama models...")
@@ -149,7 +294,7 @@ def verify_ollama_models():
             
             # Check if required models are available (2-model experiment)
             required_models = [
-                "huihui-oss20b",                                         # generator
+                "huihui-oss20b:latest",                                  # generator (via Ollama, but mainly using llama.cpp)
                 "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"   # verifier/coordinator
             ]
             model_aliases = ["generator", "verifier"]
@@ -203,33 +348,45 @@ def start_services():
         print("⚠️ Docker not available, but continuing...")
     
     # Step 2: Start TigerGraph
-    print("\n📊 Step 1: Starting TigerGraph...")
+    print("\n📊 Step 2: Starting TigerGraph...")
     if not check_docker_container("tigergraph"):
+        cleanup_docker_container("tigergraph")  # Clean up any stopped containers
         print("Starting TigerGraph...")
-        run_command("docker run -d --name tigergraph -p 14240:14240 -p 9000:9000 tigergraph/tigergraph-community:latest", "Starting TigerGraph container")
+        run_command("docker run -d --name tigergraph -p 14240:14240 -p 9000:9000 tigergraph/community:4.2.0", "Starting TigerGraph container")
         time.sleep(15)  # Wait longer for TigerGraph to start
     else:
         print("✅ TigerGraph already running")
     
     # Step 3: Start Redis
-    print("\n🔴 Step 2: Starting Redis...")
+    print("\n🔴 Step 3: Starting Redis...")
     if not check_docker_container("redis"):
-        run_command("docker run -d --name redis -p 6379:6379 redis:latest", "Starting Redis container")
+        cleanup_docker_container("redis")  # Clean up any stopped containers
+        cleanup_docker_container("hybrid-cognitive-architecture-redis-1")  # Clean up old compose names
+        run_command("docker run -d --name redis -p 6379:6379 redis:8.0-alpine", "Starting Redis container")
         time.sleep(3)
     else:
         print("✅ Redis already running")
     
     # Step 4: Start Ollama (with auto-start)
-    print("\n🤖 Step 3: Starting Ollama...")
+    print("\n🤖 Step 4: Starting Ollama...")
     if not start_ollama_service():
         print("⚠️ Ollama startup failed, but continuing...")
     
-    # Step 4.5: Verify Ollama models
-    print("\n📦 Step 3.5: Verifying Ollama models...")
+    # Step 5: Start llama.cpp server for HuiHui generator
+    print("\n🚀 Step 5: Starting llama.cpp server...")
+    if not start_llama_cpp_server():
+        print("⚠️ llama.cpp server startup failed, but continuing...")
+    
+    # Step 6: Verify Ollama models
+    print("\n📦 Step 6: Verifying Ollama models...")
     verify_ollama_models()
     
-    # Step 5: Initialize TigerGraph database
-    print("\n🗄️ Step 4: Initializing TigerGraph database...")
+    # Step 6.5: Clean up unused models for this experimental branch
+    print("\n🧹 Step 6.5: Optimizing VRAM usage...")
+    cleanup_unused_models()
+    
+    # Step 7: Initialize TigerGraph database
+    print("\n🗄️ Step 7: Initializing TigerGraph database...")
     # Wait for TigerGraph to be ready before initializing
     print("⏳ Waiting for TigerGraph to be ready...")
     for i in range(30):
@@ -245,6 +402,9 @@ def start_services():
     else:
         print("⚠️ TigerGraph may not be fully ready")
     
+    # Set up authentication first
+    auth_success = setup_tigergraph_auth()
+    
     # Check if database is already initialized
     if check_tigergraph_ready():
         print("✅ TigerGraph database already initialized")
@@ -257,8 +417,8 @@ def start_services():
         else:
             print("✅ TigerGraph database initialized successfully")
     
-    # Step 6: Start voice service
-    print("\n🎤 Step 5: Starting Voice Service...")
+    # Step 8: Start voice service
+    print("\n🎤 Step 8: Starting Voice Service...")
     voice_dir = Path(__file__).parent / "python311-services"
     
     # Start voice service in background
@@ -292,8 +452,8 @@ def start_services():
     else:
         print("⚠️ Voice service may still be starting")
     
-    # Step 7: Start main API server
-    print("\n🌐 Step 6: Starting Main API Server...")
+    # Step 9: Start main API server
+    print("\n🌐 Step 9: Starting Main API Server...")
     api_cmd = "python -m uvicorn main:app --host 127.0.0.1 --port 8001 --timeout-keep-alive 5"
     print(f"🔄 Starting main API: {api_cmd}")
     api_process = subprocess.Popen(api_cmd, shell=True)  # Remove pipe capture to keep process alive
@@ -320,12 +480,13 @@ def start_services():
 
 def verify_services():
     """Verify all services are running"""
-    print("\n🔍 Step 7: Verifying All Services...")
+    print("\n🔍 Step 10: Verifying All Services...")
     
     services = [
         ("TigerGraph", "http://localhost:14240/api/ping"),
         ("Redis", "http://localhost:6379"),  # Will fail but that's expected
         ("Ollama", "http://localhost:11434/api/tags"),
+        ("llama.cpp", "http://localhost:8081/health"),
         ("Voice Service", "http://localhost:8011/health"),
         ("Main API", "http://localhost:8001/health")
     ]

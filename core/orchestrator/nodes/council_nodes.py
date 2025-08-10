@@ -11,6 +11,7 @@ import asyncio
 from config.models import ANALYTICAL_MODEL, CREATIVE_MODEL, COORDINATOR_MODEL
 from .base import CognitiveProcessingNode
 from ..models import OrchestratorState, ProcessingPhase, CouncilDecision
+from clients.model_router import get_model_router
 
 
 class CouncilNode(CognitiveProcessingNode):
@@ -42,12 +43,14 @@ class CouncilNode(CognitiveProcessingNode):
         state.update_phase(ProcessingPhase.COUNCIL_DELIBERATION)
         
         try:
-            # Initialize cached Ollama client for LLM inference with cost optimization
-            ollama_client = await self._get_cached_ollama_client()
+            # Initialize model router for hybrid LLM inference (llama.cpp + Ollama)
+            router = await get_model_router()
             
-            # Check if Ollama is available
-            if not await ollama_client.health_check():
-                raise Exception("Ollama service is not available")
+            # Check if both backends are available
+            health_status = await router.health_check_all()
+            unhealthy_models = [model for model, healthy in health_status.items() if not healthy]
+            if unhealthy_models:
+                raise Exception(f"Some models are unavailable: {unhealthy_models}")
             
             # Define council agents with different perspectives
             council_agents = {
@@ -86,13 +89,11 @@ Be imaginative, user-focused, and think beyond conventional solutions.""",
             agent_tasks = []
             for agent_name, agent_config in council_agents.items():
                 task = asyncio.create_task(
-                    ollama_client.generate_response(
-                        prompt=f"User question: {user_question}\n\nProvide your analysis and recommended approach:",
+                    router.generate(
                         model_alias=agent_config["model"],
-                        system_prompt=agent_config["system_prompt"],
+                        prompt=f"System: {agent_config['system_prompt']}\n\nUser question: {user_question}\n\nProvide your analysis and recommended approach:",
                         max_tokens=800,
-                        temperature=0.7,
-                        timeout=45.0
+                        temperature=0.7
                     ),
                     name=agent_name
                 )
@@ -102,8 +103,8 @@ Be imaginative, user-focused, and think beyond conventional solutions.""",
             for agent_name, task in agent_tasks:
                 try:
                     response = await task
-                    initial_responses[agent_name] = response.text
-                    self.logger.debug("Received initial response", agent=agent_name, tokens=response.tokens_generated)
+                    initial_responses[agent_name] = response["content"]
+                    self.logger.debug("Received initial response", agent=agent_name, provider=response.get("provider"), usage=response.get("usage", {}))
                 except Exception as e:
                     self.logger.warning("Agent response failed", agent=agent_name, error=str(e))
                     initial_responses[agent_name] = f"[Agent {agent_name} failed to respond: {str(e)}]"
@@ -135,13 +136,11 @@ As the {critic_config['description']}, provide constructive criticism:
 Be specific and constructive in your feedback."""
 
                     task = asyncio.create_task(
-                        ollama_client.generate_response(
-                            prompt=critique_prompt,
+                        router.generate(
                             model_alias=critic_config["model"],
-                            system_prompt=critic_config["system_prompt"],
+                            prompt=f"System: {critic_config['system_prompt']}\n\n{critique_prompt}",
                             max_tokens=600,
-                            temperature=0.6,
-                            timeout=45.0
+                            temperature=0.6
                         ),
                         name=f"{critic_agent}_critique"
                     )
@@ -151,8 +150,8 @@ Be specific and constructive in your feedback."""
             for agent_name, task in critique_tasks:
                 try:
                     response = await task
-                    critiques[agent_name] = response.text
-                    self.logger.debug("Received critique", agent=agent_name, tokens=response.tokens_generated)
+                    critiques[agent_name] = response["content"]
+                    self.logger.debug("Received critique", agent=agent_name, provider=response.get("provider"), usage=response.get("usage", {}))
                 except Exception as e:
                     self.logger.warning("Agent critique failed", agent=agent_name, error=str(e))
                     critiques[agent_name] = f"[Critique from {agent_name} failed: {str(e)}]"
@@ -189,17 +188,15 @@ STRONGEST_AGENT: [agent_name because reasoning]
 """
             
             # Generate final decision using coordinator model
-            final_decision_response = await ollama_client.generate_response(
-                prompt=voting_prompt,
+            final_decision_response = await router.generate(
                 model_alias=COORDINATOR_MODEL,
-                system_prompt="You are the Council Coordinator responsible for synthesizing multi-agent deliberations into final decisions.",
+                prompt=f"System: You are the Council Coordinator responsible for synthesizing multi-agent deliberations into final decisions.\n\n{voting_prompt}",
                 max_tokens=800,
-                temperature=0.5,
-                timeout=45.0
+                temperature=0.5
             )
             
             # Parse the final decision
-            decision_text = final_decision_response.text
+            decision_text = final_decision_response["content"]
             
             # Extract structured information (basic parsing)
             decision_lines = decision_text.split('\n')

@@ -58,7 +58,7 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 
 - **Knowledge Graph**: TigerGraph Community Edition 4.2.0
 - **Vector Database**: TigerGraph (hybrid graph+vector)
-- **Session Storage**: Redis 7.2-alpine
+- **Session Storage**: Redis 8.0-alpine
 - **Local AI Models**: SGLang with RTX 4090 support
 - **Backend**: FastAPI with WebSockets
 - **Frontend**: Streamlit dashboard

@@ -39,12 +39,14 @@ hybrid-cognitive-architecture/
 │   │   │   ├── kip_nodes.py
 │   │   │   ├── pheromind_nodes.py
 │   │   │   ├── smart_router_nodes.py
+│   │   │   ├── simple_generator_verifier_node.py  # Constitution v5.4 main flow
 │   │   │   └── support_nodes.py
 │   │   ├── processing_nodes.py
 │   │   ├── state_machine.py
 │   │   ├── streaming.py
 │   │   └── synthesis.py
 │   ├── pheromind.py              # Pheromone-based memory system
+│   ├── verifier.py               # Constitution v5.4 verifier system
 │   ├── kip/                      # Knowledge Investment Protocol
 │   │   ├── __init__.py
 │   │   ├── agents.py
@@ -61,11 +63,13 @@ hybrid-cognitive-architecture/
 │   ├── error_boundaries.py       # Error handling patterns
 │   └── prompt_cache.py           # LLM prompt caching
 │
-├── clients/                       # External service clients
+├── clients/                       # External service clients  
 │   ├── __init__.py
 │   ├── redis_client.py           # Redis connection and operations
 │   ├── tigervector_client.py     # TigerGraph client
-│   └── ollama_client.py          # Ollama LLM client
+│   ├── ollama_client.py          # Ollama LLM client (with VRAM optimization)
+│   ├── llama_cpp_client.py       # llama.cpp HTTP client for generator models
+│   └── model_router.py           # Model routing (Ollama vs llama.cpp)
 │
 ├── endpoints/                     # FastAPI endpoints
 │   ├── __init__.py

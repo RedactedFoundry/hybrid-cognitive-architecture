@@ -20,7 +20,8 @@ from .nodes import (
     PheromindNode, 
     CouncilNode, 
     KIPNode, 
-    SupportNode
+    SupportNode,
+    SimpleGeneratorVerifierNode
 )
 from .models import OrchestratorState
 
@@ -50,6 +51,7 @@ class ProcessingNodes:
         self.smart_router = SmartRouterNode(orchestrator)
         self.pheromind = PheromindNode(orchestrator)
         self.council = CouncilNode(orchestrator)
+        self.simple_generator_verifier = SimpleGeneratorVerifierNode(orchestrator)  # Constitution v5.4 compliant
         self.kip = KIPNode(orchestrator)
         self.support = SupportNode(orchestrator)
     

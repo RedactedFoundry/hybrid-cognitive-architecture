@@ -197,6 +197,10 @@ class UserFacingOrchestrator:
         """Execute Council-layer multi-agent deliberation."""
         return await self._processing_nodes.council_deliberation_node(state)
     
+    async def _simple_generation_node(self, state: OrchestratorState) -> OrchestratorState:
+        """Execute Constitution v5.4 compliant simple generator-verifier flow."""
+        return await self._processing_nodes.simple_generator_verifier.process(state)
+    
     async def _kip_execution_node(self, state: OrchestratorState) -> OrchestratorState:
         """Execute KIP agent tasks based on Council decisions."""
         return await self._processing_nodes.kip_execution_node(state)

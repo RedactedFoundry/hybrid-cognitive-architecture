@@ -9,6 +9,7 @@ from .base import BaseProcessingNode, CognitiveProcessingNode
 from .smart_router_nodes import SmartRouterNode
 from .pheromind_nodes import PheromindNode
 from .council_nodes import CouncilNode
+from .simple_generator_verifier_node import SimpleGeneratorVerifierNode
 from .kip_nodes import KIPNode
 from .support_nodes import SupportNode
 
@@ -18,6 +19,7 @@ __all__ = [
     'SmartRouterNode',
     'PheromindNode',
     'CouncilNode',
+    'SimpleGeneratorVerifierNode',
     'KIPNode',
     'SupportNode'
 ]

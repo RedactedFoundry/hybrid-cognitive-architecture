@@ -3,10 +3,10 @@
 
 # NOTE: Ollama on Windows expects backslashes escaped or use forward slashes without file://
 # Using drive-absolute forward-slash path per Ollama Windows guidance
-FROM D:/Council-Project/Models/huihui-ai_Huihui-gpt-oss-20b-BF16-abliterated-MXFP4_MOE.gguf
+FROM D:\.ollama\models\huihui-oss\huihui-ai_Huihui-gpt-oss-20b-BF16-abliterated-MXFP4_MOE.gguf
 
 # Simple prompt template compatible with non-chat models
-TEMPLATE "{{ .Prompt }}"
+TEMPLATE "{{ .HARMONY }}"
 
 PARAMETER num_ctx 8192
 PARAMETER num_keep 64

@@ -68,6 +68,7 @@ class StateMachineBuilder:
         graph_builder.add_node("smart_triage", self.orchestrator._smart_triage_node)
         graph_builder.add_node("pheromind_scan", self.orchestrator._pheromind_scan_node)
         graph_builder.add_node("council_deliberation", self.orchestrator._council_deliberation_node)
+        graph_builder.add_node("simple_generation", self.orchestrator._simple_generation_node)  # Constitution v5.4
         graph_builder.add_node("kip_execution", self.orchestrator._kip_execution_node)
         graph_builder.add_node("fast_response", self.orchestrator._fast_response_node)
         graph_builder.add_node("response_synthesis", self.orchestrator._response_synthesis_node)
@@ -93,7 +94,8 @@ class StateMachineBuilder:
             {
                 "pheromind_scan": "pheromind_scan",         # exploratory_task
                 "kip_execution": "kip_execution",           # action_task
-                "council_deliberation": "council_deliberation", # complex_reasoning_task
+                "council_deliberation": "council_deliberation", # complex_reasoning_task (legacy)
+                "simple_generation": "simple_generation",   # Constitution v5.4 compliant
                 "fast_response": "fast_response",           # simple_query_task
                 "error_handler": "error_handler"
             }
@@ -114,6 +116,15 @@ class StateMachineBuilder:
             self._route_from_council,
             {
                 "response_synthesis": "response_synthesis", 
+                "error_handler": "error_handler"
+            }
+        )
+        
+        graph_builder.add_conditional_edges(
+            "simple_generation",
+            self._route_from_simple_generation,
+            {
+                "response_synthesis": "response_synthesis",
                 "error_handler": "error_handler"
             }
         )
@@ -189,15 +200,15 @@ class StateMachineBuilder:
             self.logger.info("Smart Router: Routing to KIP for direct execution", intent=intent.value)
             return "kip_execution"
         elif intent == TaskIntent.COMPLEX_REASONING_TASK:
-            self.logger.info("Smart Router: Routing to Council for deliberation", intent=intent.value)
-            return "council_deliberation"
+            self.logger.info("Smart Router: Routing to Simple Generation (Constitution v5.4)", intent=intent.value)
+            return "simple_generation"
         elif intent == TaskIntent.SIMPLE_QUERY_TASK:
-            self.logger.info("Smart Router: Routing to Fast Response for immediate answer", intent=intent.value)
-            return "fast_response"
+            self.logger.info("Smart Router: Routing to Simple Generation (Constitution v5.4 - all queries)", intent=intent.value)
+            return "simple_generation"
         else:
-            # Default fallback to council for safety
-            self.logger.warning("Smart Router: Unknown intent, defaulting to Council", intent=intent)
-            return "council_deliberation"
+            # Default fallback to simple generation for safety (Constitution v5.4)
+            self.logger.warning("Smart Router: Unknown intent, defaulting to Simple Generation", intent=intent)
+            return "simple_generation"
     
     def _route_from_pheromind(self, state: OrchestratorState) -> str:
         """Route from pheromind_scan node - check for errors or continue to response synthesis."""
@@ -211,6 +222,15 @@ class StateMachineBuilder:
         if state.error_message:
             self.logger.warning("Error detected in council phase, routing to error handler")
             return "error_handler"
+        return "response_synthesis"
+    
+    def _route_from_simple_generation(self, state: OrchestratorState) -> str:
+        """Route from simple_generation node - check for errors or continue to response synthesis."""
+        if state.error_message:
+            self.logger.warning("Error detected in simple generation phase, routing to error handler")
+            return "error_handler"
+        
+        self.logger.info("Simple generation (Constitution v5.4) completed successfully")
         return "response_synthesis"
     
     def _route_from_kip(self, state: OrchestratorState) -> str:

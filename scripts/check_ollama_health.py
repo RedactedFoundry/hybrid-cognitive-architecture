@@ -73,11 +73,14 @@ def check_required_models() -> Tuple[bool, List[str]]:
         return False, []
     
     available_models = [m.get('name') for m in data['models']]
+    # Normalize names to allow tagless matching (e.g., huihui-oss20b vs huihui-oss20b:latest)
+    available_basenames = set([name.split(":")[0] if isinstance(name, str) else name for name in available_models])
     missing_models = []
     
     for i, model in enumerate(required_models):
         alias = model_aliases[i]
-        if model not in available_models:
+        base = model.split(":")[0]
+        if (model not in available_models) and (base not in available_basenames):
             missing_models.append(alias)
     
     return len(missing_models) == 0, missing_models
