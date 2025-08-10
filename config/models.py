@@ -15,7 +15,7 @@ class ModelRole(str, Enum):
     """AI Council model roles for different cognitive functions."""
     ANALYTICAL = "analytical"     # Data analysis and logical reasoning
     CREATIVE = "creative"         # Creative thinking and ideation  
-    COORDINATOR = "coordinator"   # Synthesis and final decisions
+    COORDINATOR = "coordinator"   # Synthesis and final decisions (verifier)
 
 
 class CouncilModels:
@@ -26,10 +26,13 @@ class CouncilModels:
     DEEPSEEK_COUNCIL = "deepseek-council" 
     MISTRAL_COUNCIL = "mistral-council"
     
-    # Model to actual Ollama model name mapping
+    # Model to actual Ollama model name mapping (experimental generator+verifier)
     MODEL_MAPPING: Dict[str, str] = {
-        QWEN3_COUNCIL: "hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M",
-        DEEPSEEK_COUNCIL: "deepseek-coder:6.7b-instruct",
+        # Generator (HuiHui GPT-OSS 20B MXFP4_MOE) registered locally as 'huihui-oss20b'
+        QWEN3_COUNCIL: "huihui-oss20b",
+        # We collapse creative role to same generator for the 2-model experiment
+        DEEPSEEK_COUNCIL: "huihui-oss20b",
+        # Verifier / coordinator stays Mistral 7B Instruct via Bartowski GGUF
         MISTRAL_COUNCIL: "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"
     }
     

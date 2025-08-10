@@ -2,7 +2,7 @@
 
 ## 📁 **Root Directory Structure**
 
-```
+```text
 hybrid-cognitive-architecture/
 ├── .cursorrules                    # Cursor AI instructions
 ├── .env                           # Environment variables
@@ -134,6 +134,9 @@ hybrid-cognitive-architecture/
 │   ├── error_utils.py            # Error handling utilities
 │   └── websocket_utils.py        # WebSocket utilities
 │
+├── ollama/                        # Local Ollama model definitions
+│   └── Modelfile.huihui-oss20b    # Modelfile for HuiHui GPT-OSS 20B (MXFP4_MOE)
+│
 ├── voice_foundation/              # Voice processing integration
 │   ├── __init__.py
 │   ├── voice_client.py           # Voice service client
@@ -202,11 +205,11 @@ hybrid-cognitive-architecture/
         ├── test_voice_engines.py # Voice engine unit tests
         ├── test_voice_service.py # Voice service integration tests
         └── README.md             # Test documentation
-```
+```text
 
 ## 🚀 **Python 3.11 Microservices (NEW ARCHITECTURE)**
 
-```
+```text
 python311-services/                     # Python 3.11 compatibility layer
 ├── pyproject.toml                      # Python 3.11 dependencies (voice/ML)
 ├── README.md                           # Service overview & purpose
@@ -226,7 +229,7 @@ python311-services/                     # Python 3.11 compatibility layer
 
 ## 📊 **External Storage (Performance Optimization)**
 
-```
+```text
 D:\Council-Project\
 ├── .cursor-logs/                      # Conversation history (18MB+)
 │   ├── 1-cursor-ai-hybrid-build-chat-7-28-25.md
@@ -275,6 +278,8 @@ D:\Council-Project\
 | quick_db_check.py | 🔄 Moved | Moved from root to scripts/ directory | Aug 5 |
 | verify_system.py | 🔄 Moved | Moved from root to scripts/ directory | Aug 5 |
 | project-docs/ | ✅ Created | Symbolic link to external Project Docs | Aug 6 |
+| ollama/Modelfile.huihui-oss20b | ✅ Created | Register local HuiHui GPT-OSS 20B (MXFP4_MOE) with Ollama | Aug 6 |
+| config/models.py | 🔄 Updated | Route generator to HuiHui OSS20B, keep Mistral 7B for verifier/pheromind | Aug 6 |
 
 ## 🎯 **Key Architectural Decisions**
 
@@ -303,4 +308,5 @@ python scripts/start_everything.py --with-api
 - **Main Repo**: ~35K lines (down from 476K+)
 - **External Storage**: ~437K lines moved to `D:\Council-Project\`
 - **Performance Gain**: ~92% reduction in main repo size
+
 - **Accessibility**: All files still accessible via symbolic links
