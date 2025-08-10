@@ -147,13 +147,12 @@ def verify_ollama_models():
             for model in models:
                 print(f"   • {model.get('name', 'Unknown')}")
             
-            # Check if required models are available
+            # Check if required models are available (2-model experiment)
             required_models = [
-                "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M",  # mistral-council
-                "hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M",          # qwen3-council  
-                "deepseek-coder:6.7b-instruct"                             # deepseek-council
+                "huihui-oss20b",                                         # generator
+                "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"   # verifier/coordinator
             ]
-            model_aliases = ["mistral-council", "qwen3-council", "deepseek-council"]
+            model_aliases = ["generator", "verifier"]
             
             all_models_available = True
             for i, model in enumerate(required_models):

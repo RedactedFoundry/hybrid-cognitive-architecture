@@ -63,11 +63,10 @@ def check_ollama_service() -> Tuple[bool, Dict]:
 def check_required_models() -> Tuple[bool, List[str]]:
     """Check if required models are loaded"""
     required_models = [
-        "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M",  # mistral-council
-        "hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M",          # qwen3-council  
-        "deepseek-coder:6.7b-instruct"                             # deepseek-council
+        "huihui-oss20b",                                           # generator
+        "hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"     # verifier/coordinator
     ]
-    model_aliases = ["mistral-council", "qwen3-council", "deepseek-council"]
+    model_aliases = ["generator", "verifier"]
     
     is_healthy, data = check_ollama_service()
     if not is_healthy:
@@ -155,17 +154,15 @@ def main():
         print("✅ All required models are available")
     else:
         print(f"❌ Missing models: {', '.join(missing_models)}")
-        print("\n📥 To install missing models:")
-        print("   ollama pull hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M")
-        print("   ollama pull hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M")
-        print("   ollama pull deepseek-coder:6.7b-instruct")
+    print("\n📥 To install missing models:")
+    print("   ollama create huihui-oss20b -f ollama/Modelfile.huihui-oss20b")
+    print("   ollama pull hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M")
     
     # Test model responses
     print("\n🧪 Model Response Tests:")
     test_models = [
-        ("hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M", "Mistral"),
-        ("hf.co/lm-kit/qwen-3-14b-instruct-gguf:Q4_K_M", "Qwen3"),
-        ("deepseek-coder:6.7b-instruct", "DeepSeek")
+        ("huihui-oss20b", "Generator"),
+        ("hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M", "Mistral")
     ]
     
     for model_name, model_alias in test_models:

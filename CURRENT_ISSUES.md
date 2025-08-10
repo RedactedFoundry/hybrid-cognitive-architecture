@@ -63,6 +63,16 @@
 - [ ] **Voice System Optimization**: Implement real-time streaming and "being typed" effect
 - [ ] **KIP System Refinement**: Make economic system real-world ready
 
+### LLM Experiment (llm-experiment branch) TODO
+- [x] Register local HuiHui OSS-20B MXFP4_MOE as `huihui-oss20b` (generator)
+- [x] Keep Mistral-7B Instruct as verifier/coordinator
+- [x] Update `config/models.py` mapping to 2-model setup
+- [x] Add `ollama/Modelfile.huihui-oss20b`
+- [ ] Update `start_all.py` and `scripts/check_ollama_health.py` to check `huihui-oss20b` (partial: health script updated)
+- [ ] Replace remaining `qwen3-council`/`deepseek-council` references in code and docs or alias them to generator
+- [ ] Optional: Implement explicit verifier JSON check per Constitution v5.4 (fast path via Mistral)
+- [ ] Run smoke tests (council flow + fast path), validate VRAM/latency
+
 ## ⚡ **High Priority (This Sprint - Sprint 4)**
 
 ### **Cloud Migration Preparation**

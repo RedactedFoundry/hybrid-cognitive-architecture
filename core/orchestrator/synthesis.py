@@ -17,6 +17,7 @@ from langchain_core.messages import AIMessage
 
 from config.models import COORDINATOR_MODEL
 from utils.client_utils import get_cached_ollama_client
+from core.verifier import run_verifier, violates_safety_floor
 
 from .models import OrchestratorState, ProcessingPhase
 
@@ -96,6 +97,14 @@ Guidelines:
             )
             
             state.final_response = synthesis_response.text.strip()
+
+            # Optional verifier pass (JSON gate) – only run if response is non-empty
+            if state.final_response:
+                verifier_result = await run_verifier(ollama_client, state.final_response)
+                state.metadata["verifier"] = verifier_result.to_dict()
+                if violates_safety_floor(verifier_result):
+                    state.metadata["blocked_by_verifier"] = True
+                    # Keep the text but flag it; UI/API can decide follow-up per Constitution v5.4
             
             # Store conversation in TigerGraph for future context
             await self._store_conversation_history(state)
