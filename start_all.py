@@ -30,6 +30,10 @@ import os
 import subprocess
 import time
 import signal
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from pathlib import Path
 
 def run_command(cmd, description, check=True, capture_output=False):
@@ -149,34 +153,6 @@ def start_ollama_service():
         print(f"❌ Failed to start Ollama: {e}")
         return False
 
-def setup_tigergraph_auth():
-    """Set up TigerGraph authentication with environment variable password"""
-    print("🔐 Setting up TigerGraph authentication...")
-    
-    # Get password from environment variable (REQUIRED)
-    new_password = os.getenv("TIGERGRAPH_PASSWORD")
-    if not new_password:
-        print("   ❌ TIGERGRAPH_PASSWORD environment variable not set!")
-        print("   💡 Please set TIGERGRAPH_PASSWORD in your .env file")
-        return False
-    
-    try:
-        # Connect to TigerGraph container and change password
-        change_password_cmd = f'''docker exec tigergraph bash -c "
-            gsql 'ALTER PASSWORD tigergraph' <<< $'tigergraph\\n{new_password}\\n{new_password}'
-        "'''
-        
-        result = subprocess.run(change_password_cmd, shell=True, capture_output=True, text=True)
-        if result.returncode == 0:
-            print(f"   ✅ TigerGraph password updated")
-            return True
-        else:
-            print(f"   ⚠️ Password change failed: {result.stderr}")
-            return False
-            
-    except Exception as e:
-        print(f"   ⚠️ TigerGraph auth setup error: {e}")
-        return False
 
 def cleanup_unused_models():
     """Unload unused models from VRAM for this experimental branch"""
@@ -276,6 +252,24 @@ def start_llama_cpp_server():
         
     except Exception as e:
         print(f"❌ Failed to start llama.cpp server: {e}")
+        return False
+
+def check_tigergraph_graph_exists():
+    """Check if HybridAICouncil graph exists with proper schema"""
+    try:
+        # Import here to avoid circular imports
+        sys.path.append('.')
+        from clients.tigervector_client import get_tigergraph_connection, is_graph_initialized
+        
+        conn = get_tigergraph_connection()
+        if conn is None:
+            return False
+            
+        # Delegate to the TigerGraph client for proper schema checking
+        return is_graph_initialized(conn)
+            
+    except Exception as e:
+        print(f"   ⚠️ Error checking TigerGraph graph: {e}")
         return False
 
 def verify_ollama_models():
@@ -402,12 +396,11 @@ def start_services():
     else:
         print("⚠️ TigerGraph may not be fully ready")
     
-    # Set up authentication first
-    auth_success = setup_tigergraph_auth()
+
     
-    # Check if database is already initialized
-    if check_tigergraph_ready():
-        print("✅ TigerGraph database already initialized")
+    # Check if HybridAICouncil graph exists
+    if check_tigergraph_graph_exists():
+        print("✅ TigerGraph HybridAICouncil graph already exists")
     else:
         # Now try to initialize the database
         print("🔄 Initializing TigerGraph database...")

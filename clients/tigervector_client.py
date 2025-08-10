@@ -130,6 +130,54 @@ def test_connection():
             )
         return False
 
+def is_graph_initialized(conn):
+    """
+    Check if the TigerGraph database is properly initialized with schema.
+    
+    Args:
+        conn: TigerGraph connection object
+        
+    Returns:
+        bool: True if graph exists with proper schema, False otherwise
+    """
+    try:
+        # Expected vertex types for HybridAICouncil schema
+        expected_vertices = [
+            'Person', 'AIPersona', 'Preference', 'KIPAgent', 'Tool', 
+            'Conversation', 'Message', 'Knowledge', 'Decision', 'Pheromone'
+        ]
+        
+        # Use GSQL ls command since getVertexTypes() seems unreliable
+        try:
+            schema_info = conn.gsql('ls')
+            
+            # Check if expected vertices exist in the schema
+            found_vertices = []
+            for vertex in expected_vertices:
+                if f"VERTEX {vertex}(" in schema_info:
+                    found_vertices.append(vertex)
+            
+            has_core_schema = len(found_vertices) >= 3  # At least 3 core vertices
+            
+            if has_core_schema:
+                logger.info("Graph schema verification successful", 
+                           found_vertices=found_vertices,
+                           total_expected=len(expected_vertices))
+                return True
+            else:
+                logger.warning("Graph exists but schema incomplete", 
+                              found_vertices=found_vertices,
+                              expected_count=len(expected_vertices))
+                return False
+                
+        except Exception as schema_error:
+            logger.warning("Error checking schema via GSQL", error=str(schema_error))
+            return False
+            
+    except Exception as e:
+        logger.warning("Error checking graph schema", error=str(e))
+        return False
+
 if __name__ == "__main__":
     # Run connection test if script is executed directly
     test_connection() 

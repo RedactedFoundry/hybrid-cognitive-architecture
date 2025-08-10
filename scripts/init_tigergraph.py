@@ -19,6 +19,10 @@ import sys
 import os
 from pathlib import Path
 import structlog
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -93,7 +97,16 @@ def initialize_database():
     try:
         # Create database/graph (TigerGraph calls it a "graph")
         graph_name = "HybridAICouncil"
-        logger.info("Creating graph", graph_name=graph_name)
+        logger.info("Checking graph existence", graph_name=graph_name)
+        
+        # Check if graph already exists with proper schema
+        try:
+            from clients.tigervector_client import is_graph_initialized
+            if is_graph_initialized(conn):
+                logger.info("Graph already exists with complete schema, skipping initialization")
+                return True
+        except Exception:
+            pass  # Graph might not exist, continue with creation
         
         # Create graph using GSQL commands
         try:
@@ -103,10 +116,11 @@ def initialize_database():
             if create_result:
                 logger.debug("Graph creation result", result=create_result)
         except Exception as create_error:
-            if "already exists" in str(create_error) or "Graph name already exists" in str(create_error):
-                logger.info("Graph already exists", graph_name=graph_name)
+            error_msg = str(create_error)
+            if "already exists" in error_msg or "Graph name already exists" in error_msg or "conflicts with another type" in error_msg:
+                logger.info("Graph already exists, continuing to schema loading", graph_name=graph_name)
             else:
-                logger.warning("Graph creation warning, continuing", error=str(create_error))
+                logger.warning("Graph creation warning, continuing", error=error_msg)
         
         # Switch to using the graph
         logger.info("Switching to graph", graph_name=graph_name)
@@ -124,10 +138,19 @@ def initialize_database():
             
             logger.info("Executing schema")
             # Execute schema
-            result = conn.gsql(schema_content)
-            logger.info("Schema loaded successfully")
-            if result:
-                logger.debug("Schema loading result", result=result)
+            try:
+                result = conn.gsql(schema_content)
+                logger.info("Schema loaded successfully")
+                if result:
+                    logger.debug("Schema loading result", result=result)
+            except Exception as schema_error:
+                error_msg = str(schema_error)
+                if ("already exist" in error_msg or "is used by another object" in error_msg or 
+                    "conflicts with another type" in error_msg):
+                    logger.info("Schema elements already exist, verifying completeness")
+                else:
+                    logger.error("Schema loading failed", error=error_msg)
+                    raise schema_error
         else:
             logger.warning("Schema file not found, manual loading required", 
                           schema_path=str(schema_path))
@@ -152,7 +175,7 @@ def initialize_database():
         graphstudio_url = f"{tigergraph_host}:{tigergraph_port}"
         logger.info("Access information",
                    graphstudio_url=graphstudio_url,
-                   login_credentials="tigergraph/tigergraph",
+                   login_credentials=f"{os.getenv('TIGERGRAPH_USERNAME', 'tigergraph')}/{os.getenv('TIGERGRAPH_PASSWORD', 'tigergraph')}",
                    graph_name=graph_name,
                    verification_steps=[
                        f"Open GraphStudio at {graphstudio_url}",
