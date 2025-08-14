@@ -217,5 +217,14 @@ models/
 
 # Third-party dependencies
 kyutai-tts/nul
+
+# External storage symbolic links (to avoid repo bloat)
+# These link to D:\Council-Project\ for conversation logs and documentation
 .cursor-logs/
+project-docs/
 dev-logs/
+OG.env
+*.env
+# Ignore local env files
+OG.env
+*.env

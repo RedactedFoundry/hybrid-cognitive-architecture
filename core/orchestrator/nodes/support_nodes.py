@@ -60,14 +60,15 @@ class SupportNode(BaseProcessingNode):
         # Error recovery with retry logic and graceful degradation
         # Retries up to max_retries (default: 3) then provides fallback response
         
-        if state.retry_count < state.max_retries:
-            state.retry_count += 1
-            self.logger.info("Attempting retry", retry_count=state.retry_count)
-            # Reset to previous phase for retry
-            state.current_phase = ProcessingPhase.INITIALIZATION
-        else:
+        # Always set a user-visible fallback to avoid empty final responses in UI
+        if not state.final_response:
             state.final_response = "I apologize, but I encountered an error processing your request. Please try again."
             state.add_message(AIMessage(content=state.final_response))
+        
+        # Maintain retry counters for observability, but do not loop in this graph
+        if state.retry_count < state.max_retries:
+            state.retry_count += 1
+            self.logger.info("Retry recorded (no loop)", retry_count=state.retry_count)
         
         return state
     
@@ -90,35 +91,29 @@ class SupportNode(BaseProcessingNode):
         state.update_phase(ProcessingPhase.FAST_RESPONSE)
         
         try:
-            # Use the fastest model for immediate response with caching for common queries
-            ollama_client = await self._get_cached_ollama_client()
+            # Use the model router (llama.cpp) for immediate response
+            from clients.model_router import get_model_router
+            router = await get_model_router()
             
             # Simple, direct prompt for fast responses - ENFORCE BREVITY
             fast_prompt = f"""
-INSTRUCTION: Answer this question with 1-2 sentences maximum. Be direct and factual.
+Answer in 1–2 short, conversational sentences.
+Do not use a single-word answer; include a natural phrase (e.g., "X and Y make Z").
+Do not include any preamble, role language, or headings.
 
 Question: {state.user_input}
-
-Rules:
-- Give ONLY the essential facts
-- Maximum 2 sentences
-- No explanations or elaborations
-- For "Who is..." questions: Just state the name and title
-- For "What color..." questions: Just state the color
-- For "What time..." questions: Note you don't have real-time data
-
-BRIEF ANSWER:"""
+"""
 
             # Generate fast response using Mistral
-            response = await ollama_client.generate_response(
+            result = await router.generate(
+                model_alias=COORDINATOR_MODEL,
                 prompt=fast_prompt,
-                model_alias=COORDINATOR_MODEL,  # Mistral - fastest model
-                max_tokens=200,  # Keep responses concise
-                timeout=15  # Fast response requirement
+                max_tokens=200,
+                temperature=0.2
             )
             
             # Store the fast response as final response
-            state.final_response = response.text.strip()
+            state.final_response = str(result.get("content", "")).strip()
             state.add_message(AIMessage(content=state.final_response))
             
             # Add metadata about fast path usage

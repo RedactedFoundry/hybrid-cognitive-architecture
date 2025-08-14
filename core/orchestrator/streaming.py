@@ -16,7 +16,6 @@ from typing import AsyncGenerator, Optional, TYPE_CHECKING
 import structlog
 
 from config.models import ANALYTICAL_MODEL, CREATIVE_MODEL, COORDINATOR_MODEL
-from utils.client_utils import get_cached_ollama_client
 
 from .models import (
     StreamEvent, StreamEventType, ProcessingPhase, OrchestratorState

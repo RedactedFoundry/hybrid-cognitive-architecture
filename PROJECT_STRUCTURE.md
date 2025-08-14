@@ -7,12 +7,18 @@ hybrid-cognitive-architecture/
 ├── .cursorrules                    # Cursor AI instructions
 ├── .env                           # Environment variables
 ├── .gitignore                     # Git ignore rules (includes .cursor-logs/ and dev-logs/)
-├── docker-compose.yaml            # Docker services (Redis, TigerGraph, Ollama)
+├── docker-compose.yaml            # Docker services (Redis, TigerGraph)
 ├── main.py                        # Main FastAPI application
 ├── pyproject.toml                 # Main project dependencies (Python 3.13)
 ├── README.md                      # Project overview
 ├── start_all.py                   # Single command to start all services
-├── verify_system.py               # System verification script
+├── add_sample_data.py             # TigerGraph sample data loader  
+├── comprehensive_baseline_review.py # Quality analysis framework
+├── detailed_quality_comparison.py # Response comparison tool
+├── show_response_differences.py   # Side-by-side response viewer
+├── test_json_ab.py               # A/B testing framework
+├── manual_tigergraph_examples.gsql # TigerGraph GSQL examples
+├── Perplexity JSON-Prompt-v1.3.json # JSON prompting reference
 │
 ├── .cursor-logs/                  # 🔗 SYMBOLIC LINK to external storage
 │   └── *.md                      # Conversation history (moved to D:\Council-Project\.cursor-logs)
@@ -25,7 +31,8 @@ hybrid-cognitive-architecture/
 │
 ├── config/                        # Configuration management
 │   ├── __init__.py
-│   └── models.py                  # Model definitions and aliases
+│   ├── models.py                  # Model definitions and aliases
+│   └── llama_cpp_models.py        # llama.cpp model paths and ports (env-driven)
 │
 ├── core/                          # Core AI system components
 │   ├── orchestrator/              # LangGraph orchestrator
@@ -59,7 +66,6 @@ hybrid-cognitive-architecture/
 │   │   ├── treasury_core.py
 │   │   └── treasury.py
 │   ├── logging_config.py         # Structured logging setup
-│   ├── cache_integration.py      # Redis cache integration
 │   ├── error_boundaries.py       # Error handling patterns
 │   └── prompt_cache.py           # LLM prompt caching
 │
@@ -67,9 +73,8 @@ hybrid-cognitive-architecture/
 │   ├── __init__.py
 │   ├── redis_client.py           # Redis connection and operations
 │   ├── tigervector_client.py     # TigerGraph client
-│   ├── ollama_client.py          # Ollama LLM client (with VRAM optimization)
-│   ├── llama_cpp_client.py       # llama.cpp HTTP client for generator models
-│   └── model_router.py           # Model routing (Ollama vs llama.cpp)
+│   ├── llama_cpp_client.py       # llama.cpp HTTP client for models
+│   └── model_router.py           # Model routing (llama.cpp only)
 │
 ├── endpoints/                     # FastAPI endpoints
 │   ├── __init__.py
@@ -88,19 +93,22 @@ hybrid-cognitive-architecture/
 │
 ├── scripts/                       # Utility scripts
 │   ├── __init__.py
-│   ├── start_everything.py       # Service orchestration
 │   ├── init_tigergraph.py        # Database initialization
 │   ├── setup-tigergraph.sh       # TigerGraph setup (Linux/Mac)
 │   ├── setup-tigergraph.ps1      # TigerGraph setup (Windows)
 │   ├── start_tigergraph_safe.py  # Safe TigerGraph startup
 │   ├── smart_tigergraph_init.py  # Smart database initialization
 │   ├── check_financial_status.py # KIP status checker
+│   ├── start_llamacpp_servers.py # Start and monitor llama.cpp servers (multi-model)
+│   ├── quick_db_check.py         # Quick database status check
+│   ├── verify_system.py          # Complete system verification
 │   └── check-file-sizes.py       # File size monitoring
 │
 ├── static/                        # Web interface files
 │   ├── index.html                # Main dashboard
 │   ├── realtime-voice.html       # Voice chat interface
 │   ├── voice-test.html           # Voice testing interface
+│   ├── claude-ui-mockup.html     # Standalone interactive UI mockup (no backend)
 │   ├── css/
 │   │   └── styles.css
 │   └── js/
@@ -134,12 +142,8 @@ hybrid-cognitive-architecture/
 │
 ├── utils/                         # Utility functions
 │   ├── __init__.py
-│   ├── client_utils.py           # Client utilities
 │   ├── error_utils.py            # Error handling utilities
 │   └── websocket_utils.py        # WebSocket utilities
-│
-├── ollama/                        # Local Ollama model definitions
-│   └── Modelfile.huihui-oss20b    # Modelfile for HuiHui GPT-OSS 20B (MXFP4_MOE)
 │
 ├── voice_foundation/              # Voice processing integration
 │   ├── __init__.py
@@ -288,6 +292,35 @@ D:\Council-Project\
 | project-docs/ | ✅ Created | Symbolic link to external Project Docs | Aug 6 |
 | ollama/Modelfile.huihui-oss20b | ✅ Created | Register local HuiHui GPT-OSS 20B (MXFP4_MOE) with Ollama | Aug 6 |
 | config/models.py | 🔄 Updated | Route generator to HuiHui OSS20B, keep Mistral 7B for verifier/pheromind | Aug 6 |
+| start_all.py | 🔧 Refactored | Unified llama.cpp startup/health, Windows UTF-8 logs, removed Ollama | Aug 14 |
+| core/orchestrator/synthesis.py | 🔄 Updated | Conversational tone; no preambles or headings | Aug 14 |
+| core/orchestrator/nodes/smart_router_nodes.py | 🔄 Updated | Classification via llama.cpp ModelRouter | Aug 14 |
+| core/orchestrator/nodes/simple_generator_verifier_node.py | 🔄 Updated | Conversational generator prompt; safer rewrite prompt | Aug 14 |
+| core/orchestrator/nodes/support_nodes.py | 🔄 Updated | Fast path yields 1–2 natural sentences | Aug 14 |
+| clients/model_router.py | 🔄 Updated | llama.cpp-only routing; removed Ollama branch | Aug 14 |
+| clients/llama_cpp_client.py | 🔄 Updated | Host+port from env; fixed base URL | Aug 14 |
+| config/llama_cpp_models.py | ✅ Created/Updated | Env-driven model dir/host/ports; validation helpers | Aug 14 |
+| scripts/start_llamacpp_servers.py | 🔄 Updated | Config-safe import; explicit binary; Windows UTF-8 logs | Aug 14 |
+| Makefile | 🔄 Updated | Replaced Ollama checks with llama.cpp health targets | Aug 14 |
+| PROJECT_STRUCTURE.md | 🔄 Updated | Removed Ollama references and legacy utilities | Aug 14 |
+| CURRENT_ISSUES.md | 🔄 Updated | Unified llama.cpp backend; voice/TTS notes | Aug 14 |
+| clients/ollama_client.py | ❌ Removed | Legacy client no longer used | Aug 14 |
+| core/cache_integration.py | ❌ Removed | Ollama cache wrapper removed | Aug 14 |
+| utils/client_utils.py | ❌ Removed | Ollama client helpers removed | Aug 14 |
+| scripts/check_ollama_health.py | ❌ Removed | Legacy health script removed | Aug 14 |
+| scripts/generate_modelfile.py | ❌ Removed | Legacy Ollama Modelfile generator removed | Aug 14 |
+| ollama/Modelfile.huihui-oss20b | ❌ Removed | Legacy model definition | Aug 14 |
+| schemas/schema.gsql | 🔄 Updated | Fixed function→agent_role reserved word conflict | Aug 12 |
+| scripts/generate_modelfile.py | ✅ Created | Dynamic Ollama Modelfile generation for cloud deployment | Aug 12 |
+| comprehensive_baseline_review.py | ✅ Created | Quality analysis framework for response evaluation | Aug 12 |
+| test_json_ab.py | ✅ Created | A/B testing framework for prompting strategies | Aug 12 |
+| detailed_quality_comparison.py | ✅ Created | Multi-metric response comparison tool | Aug 12 |
+| show_response_differences.py | ✅ Created | Side-by-side response comparison viewer | Aug 12 |
+| .cursorrules | 🔄 Updated | MCP server integration guidance and debugging loop prevention | Aug 12 |
+| project-docs/HANDOFF_AUG_11_2025_LATE_EVENING.md | ✅ Created | Session handoff documentation | Aug 12 |
+| CURRENT_ISSUES.md | 🔄 Updated | Production-ready status and accomplishments | Aug 12 |
+| project-docs/dev-log-Hybrid-AI-Council.md | 🔄 Updated | Complete session documentation | Aug 12 |
+| static/claude-ui-mockup.html | ✅ Created | Standalone Claude UI interactive mockup (no backend) | Aug 14 |
 
 ## 🎯 **Key Architectural Decisions**
 
@@ -302,13 +335,11 @@ D:\Council-Project\
 # Start everything with one command
 python start_all.py
 
-# Or use the script
-python scripts/start_everything.py --with-api
-
 # Access the system
-# Main Dashboard: http://localhost:8001/static/index.html
+# Main Dashboard: http://localhost:8001/static/index.html  
 # Voice Chat: http://localhost:8001/static/realtime-voice.html
 # Voice Service: http://localhost:8011/health
+# TigerGraph GraphStudio: http://localhost:14240
 ```
 
 ## 📈 **Performance Metrics**

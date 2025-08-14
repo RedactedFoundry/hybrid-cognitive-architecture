@@ -1,6 +1,5 @@
 """
-llama.cpp HTTP client for HuiHui GPT-OSS 20B MXFP4_MOE model.
-Provides compatibility with our existing Ollama-based architecture.
+llama.cpp HTTP client for multiple models (HuiHui OSS20B + Mistral 7B).
 """
 
 import asyncio
@@ -9,13 +8,15 @@ import aiohttp
 from typing import Dict, Any, Optional
 import structlog
 
+from config.llama_cpp_models import get_model_port, get_model_host
+
 logger = structlog.get_logger(__name__)
 
 class LlamaCppClient:
-    """HTTP client for llama.cpp server."""
+    """HTTP client for llama.cpp server with multi-model support."""
     
-    def __init__(self, base_url: str = "http://127.0.0.1:8081"):
-        self.base_url = base_url
+    def __init__(self, base_url_template: str = "http://{}:{}"):
+        self.base_url_template = base_url_template
         self.session: Optional[aiohttp.ClientSession] = None
     
     async def __aenter__(self):
@@ -26,24 +27,32 @@ class LlamaCppClient:
         if self.session:
             await self.session.close()
     
-    async def health_check(self) -> bool:
-        """Check if llama.cpp server is responsive."""
+    def _get_base_url(self, model_name: str) -> str:
+        """Get base URL for a specific model."""
+        host = get_model_host(model_name)
+        port = get_model_port(model_name)
+        return self.base_url_template.format(host, port)
+    
+    async def health_check(self, model_name: str = "huihui-oss20b-llamacpp") -> bool:
+        """Check if llama.cpp server is responsive for a specific model."""
         try:
             if not self.session:
                 self.session = aiohttp.ClientSession()
             
-            async with self.session.get(f"{self.base_url}/health", timeout=5) as response:
+            base_url = self._get_base_url(model_name)
+            async with self.session.get(f"{base_url}/health", timeout=5) as response:
                 return response.status == 200
         except Exception as e:
-            logger.warning("llama.cpp health check failed", error=str(e))
+            logger.warning("llama.cpp health check failed", error=str(e), model=model_name)
             return False
     
-    async def generate(self, prompt: str, **kwargs) -> Dict[str, Any]:
+    async def generate(self, prompt: str, model_name: str = "huihui-oss20b-llamacpp", **kwargs) -> Dict[str, Any]:
         """
         Generate completion from llama.cpp server using chat completions API.
         
         Args:
             prompt: Input text
+            model_name: Model name to determine which server to use
             **kwargs: Additional parameters (temperature, max_tokens, etc.)
         
         Returns:
@@ -52,7 +61,9 @@ class LlamaCppClient:
         if not self.session:
             self.session = aiohttp.ClientSession()
         
-        # Use chat completions format for proper gpt-oss template handling
+        base_url = self._get_base_url(model_name)
+
+        # Use chat completions format for proper template handling
         payload = {
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": kwargs.get("max_tokens", 1024),
@@ -64,7 +75,7 @@ class LlamaCppClient:
         
         try:
             async with self.session.post(
-                f"{self.base_url}/v1/chat/completions",
+                f"{base_url}/v1/chat/completions",
                 json=payload,
                 timeout=60
             ) as response:

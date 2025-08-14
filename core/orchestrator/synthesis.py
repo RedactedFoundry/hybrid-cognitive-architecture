@@ -16,7 +16,7 @@ import structlog
 from langchain_core.messages import AIMessage
 
 from config.models import COORDINATOR_MODEL
-from utils.client_utils import get_cached_ollama_client
+from clients.model_router import get_model_router
 from core.verifier import run_verifier, violates_safety_floor
 
 from .models import OrchestratorState, ProcessingPhase
@@ -65,8 +65,8 @@ class ResponseSynthesizer:
         state.update_phase(ProcessingPhase.RESPONSE_SYNTHESIS)
         
         try:
-            # Initialize Ollama client for synthesis with caching
-            ollama_client = await get_cached_ollama_client("ResponseSynthesizer")
+            # Use model router (llama.cpp) for synthesis
+            router = await get_model_router()
             
             # Gather insights from all 3 layers
             synthesis_context = await self._gather_synthesis_context(state)
@@ -75,32 +75,25 @@ class ResponseSynthesizer:
             synthesis_prompt = self._build_synthesis_prompt(state.user_input, synthesis_context)
             
             # Generate synthesized response using coordinator agent
-            synthesis_response = await ollama_client.generate_response(
-                prompt=synthesis_prompt,
+            synthesis_suffix = (
+                "Write a direct, conversational response that feels natural to read aloud.\n"
+                "Do NOT include any role statements, preambles, or headings.\n"
+                "Start with the answer, then add only the most useful details.\n"
+                "Use short paragraphs; bullet points only if they improve clarity.\n"
+                "Avoid phrases like 'as an AI' or 'as the coordinator'.\n"
+            )
+            synthesis_result = await router.generate(
                 model_alias=COORDINATOR_MODEL,
-                system_prompt="""You are the Response Synthesis Coordinator for the Hybrid AI Council.
-
-Your role is to create a coherent, helpful final response by integrating insights from:
-1. Pheromind Layer: Ambient patterns and contextual signals
-2. Council Layer: Multi-agent analytical deliberation  
-3. KIP Layer: Agent execution results and live data
-
-Guidelines:
-- Synthesize information from all layers into a unified response
-- Prioritize the most relevant insights based on the user's question
-- Include specific data/results from KIP layer when available
-- Maintain a helpful, professional tone
-- Be concise but comprehensive
-- If layers contradict, explain the nuance rather than hiding it""",
+                prompt=synthesis_prompt + "\n\n" + synthesis_suffix,
                 max_tokens=800,
                 temperature=0.3
             )
             
-            state.final_response = synthesis_response.text.strip()
+            state.final_response = str(synthesis_result.get("content", "")).strip()
 
             # Optional verifier pass (JSON gate) – only run if response is non-empty
             if state.final_response:
-                verifier_result = await run_verifier(ollama_client, state.final_response)
+                verifier_result = await run_verifier(router, state.final_response)
                 state.metadata["verifier"] = verifier_result.to_dict()
                 if violates_safety_floor(verifier_result):
                     state.metadata["blocked_by_verifier"] = True
@@ -113,7 +106,7 @@ Guidelines:
                 "Response synthesis completed successfully",
                 request_id=state.request_id,
                 response_length=len(state.final_response),
-                tokens_used=synthesis_response.tokens_generated
+                tokens_used=synthesis_result.get("usage", {}).get("total_tokens", 0)
             )
             
         except Exception as e:
@@ -176,53 +169,68 @@ Guidelines:
     
     def _build_synthesis_prompt(self, user_input: str, context: Dict[str, Any]) -> str:
         """Build the synthesis prompt for the coordinator model."""
-        prompt_parts = [
-            f"USER QUESTION: {user_input}",
-            "",
-            "=== 3-LAYER COGNITIVE ANALYSIS ==="
-        ]
+        # Check if any cognitive layers have data
+        has_pheromind_data = bool(context["pheromind_insights"])
+        has_council_data = bool(context["council_outcome"])  
+        has_kip_data = bool(context["kip_results"])
+        has_any_layer_data = has_pheromind_data or has_council_data or has_kip_data
         
-        # Add Pheromind insights
-        if context["pheromind_insights"]:
-            prompt_parts.append("\n🧠 PHEROMIND LAYER (Ambient Patterns):")
-            for insight in context["pheromind_insights"]:
-                prompt_parts.append(f"- Pattern '{insight['pattern']}' (strength: {insight['strength']:.2f}): {insight['content']}")
-        else:
-            prompt_parts.append("\n🧠 PHEROMIND LAYER: No significant ambient patterns detected")
+        prompt_parts = [f"USER QUESTION: {user_input}", ""]
         
-        # Add Council outcome
-        if context["council_outcome"]:
-            council = context["council_outcome"]
+        # If no layers have data, use simple synthesis without cognitive layer framing
+        if not has_any_layer_data:
             prompt_parts.extend([
-                "\n🏛️ COUNCIL LAYER (Multi-Agent Deliberation):",
-                f"Decision: {council['decision']}",
-                f"Confidence: {council['confidence']:.1%}",
-                f"Reasoning: {council['reasoning']}",
-                f"Participants: {', '.join(council['participants'])}"
+                "The system has generated a comprehensive response to this question.",
+                "Please review and refine the response to ensure it:",
+                "1. Directly addresses the user's question",
+                "2. Provides actionable advice or information", 
+                "3. Maintains a helpful and professional tone",
+                "4. Is well-organized and clear",
+                "",
+                "Do not mention cognitive layers, analysis processes, or system architecture.",
+                "Focus purely on providing a helpful answer to the user's question.",
+                "",
+                "Response:"
             ])
         else:
-            prompt_parts.append("\n🏛️ COUNCIL LAYER: No deliberation outcome available")
-        
-        # Add KIP results
-        if context["kip_results"]:
-            prompt_parts.append("\n⚡ KIP LAYER (Agent Execution Results):")
-            for result in context["kip_results"]:
-                status_emoji = "✅" if result['status'] == "completed" else "❌" if result['status'] == "failed" else "⏳"
-                prompt_parts.append(f"{status_emoji} Agent {result['agent_id']} ({result['task_type']}): {result['result']}")
-        else:
-            prompt_parts.append("\n⚡ KIP LAYER: No agent execution results")
-        
-        prompt_parts.extend([
-            "",
-            "=== SYNTHESIS TASK ===",
-            "Based on the analysis above, provide a comprehensive response that:",
-            "1. Directly answers the user's question",
-            "2. Integrates the most relevant insights from each layer",
-            "3. Highlights any concrete data or results from KIP agent execution",
-            "4. Acknowledges uncertainty if layers provide conflicting information",
-            "",
-            "Response:"
-        ])
+            # Use cognitive analysis framing when layers have data
+            prompt_parts.append("=== 3-LAYER COGNITIVE ANALYSIS ===")
+            
+            # Add Pheromind insights (only if available)
+            if has_pheromind_data:
+                prompt_parts.append("\n🧠 PHEROMIND LAYER (Ambient Patterns):")
+                for insight in context["pheromind_insights"]:
+                    prompt_parts.append(f"- Pattern '{insight['pattern']}' (strength: {insight['strength']:.2f}): {insight['content']}")
+            
+            # Add Council outcome (only if available)
+            if has_council_data:
+                council = context["council_outcome"]
+                prompt_parts.extend([
+                    "\n🏛️ COUNCIL LAYER (Multi-Agent Deliberation):",
+                    f"Decision: {council['decision']}",
+                    f"Confidence: {council['confidence']:.1%}",
+                    f"Reasoning: {council['reasoning']}",
+                    f"Participants: {', '.join(council['participants'])}"
+                ])
+            
+            # Add KIP results (only if available)
+            if has_kip_data:
+                prompt_parts.append("\n⚡ KIP LAYER (Agent Execution Results):")
+                for result in context["kip_results"]:
+                    status_emoji = "✅" if result['status'] == "completed" else "❌" if result['status'] == "failed" else "⏳"
+                    prompt_parts.append(f"{status_emoji} Agent {result['agent_id']} ({result['task_type']}): {result['result']}")
+            
+            prompt_parts.extend([
+                "",
+                "=== SYNTHESIS TASK ===",
+                "Based on the analysis above, provide a comprehensive response that:",
+                "1. Directly answers the user's question",
+                "2. Integrates the most relevant insights from each layer",
+                "3. Highlights any concrete data or results from KIP agent execution",
+                "4. Acknowledges uncertainty if layers provide conflicting information",
+                "",
+                "Response:"
+            ])
         
         return "\n".join(prompt_parts)
     

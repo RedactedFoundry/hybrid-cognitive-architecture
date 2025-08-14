@@ -203,8 +203,8 @@ class StateMachineBuilder:
             self.logger.info("Smart Router: Routing to Simple Generation (Constitution v5.4)", intent=intent.value)
             return "simple_generation"
         elif intent == TaskIntent.SIMPLE_QUERY_TASK:
-            self.logger.info("Smart Router: Routing to Simple Generation (Constitution v5.4 - all queries)", intent=intent.value)
-            return "simple_generation"
+            self.logger.info("Smart Router: Routing to Fast Response for simple query", intent=intent.value)
+            return "fast_response"
         else:
             # Default fallback to simple generation for safety (Constitution v5.4)
             self.logger.warning("Smart Router: Unknown intent, defaulting to Simple Generation", intent=intent)

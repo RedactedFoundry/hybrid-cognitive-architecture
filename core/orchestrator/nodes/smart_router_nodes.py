@@ -10,6 +10,7 @@ Now with comprehensive error boundaries for production reliability.
 """
 
 from config.models import COORDINATOR_MODEL
+from clients.model_router import get_model_router
 from .base import CognitiveProcessingNode
 from ..models import OrchestratorState, ProcessingPhase, TaskIntent
 from utils.error_utils import (
@@ -55,8 +56,8 @@ class SmartRouterNode(CognitiveProcessingNode):
         state.update_phase(ProcessingPhase.SMART_TRIAGE)
         
         try:
-            # Use the fastest model (Mistral) for quick intent classification with caching
-            ollama_client = await self._get_cached_ollama_client()
+            # Use the fastest model (Mistral via llama.cpp) for quick intent classification
+            router = await get_model_router()
             
             # Intent classification prompt - HEAVILY BIASED TOWARD SIMPLE QUERIES
             classification_prompt = f"""
@@ -114,15 +115,15 @@ EXAMPLES:
 YOUR CLASSIFICATION (ONE WORD ONLY):"""
 
             # Get intent classification from Mistral (fastest model)
-            classification_response = await ollama_client.generate_response(
+            classification_result = await router.generate(
+                model_alias=COORDINATOR_MODEL,
                 prompt=classification_prompt,
-                model_alias=COORDINATOR_MODEL,  # Mistral for speed
                 max_tokens=50,
-                timeout=10  # Fast classification
+                temperature=0.0
             )
             
             # Parse the classification response  
-            classification = classification_response.text.strip().lower()
+            classification = str(classification_result.get("content", "")).strip().lower()
             
             self.logger.debug("Smart Router classification received", 
                            raw_classification=classification,
@@ -138,22 +139,77 @@ YOUR CLASSIFICATION (ONE WORD ONLY):"""
                                  "weather" in user_input_lower or
                                  user_input_lower.startswith(("define",)))
             
-            # Complex reasoning indicators - expanded to catch more analytical questions
-            complex_rule_match = (user_input_lower.startswith(("compare", "should i", "pros and cons", "analyze")) or
-                                 "vs " in user_input_lower or
-                                 "versus" in user_input_lower or
-                                 "how does" in user_input_lower or
-                                 "how will" in user_input_lower or
-                                 "why does" in user_input_lower or
-                                 "why is" in user_input_lower or
-                                 "why would" in user_input_lower or
-                                 "in depth" in user_input_lower or
-                                 "detailed" in user_input_lower or
-                                 "ways to" in user_input_lower or
-                                 "methods to" in user_input_lower or
-                                 "approaches to" in user_input_lower or
-                                 ("help" in user_input_lower and len(user_input_lower.split()) > 5) or
-                                 ("impact" in user_input_lower and len(user_input_lower.split()) > 4))
+            # Complex reasoning indicators - EXPANDED to catch analytical questions that were misrouted
+            complex_rule_match = (
+                # Original patterns
+                user_input_lower.startswith(("compare", "should i", "pros and cons", "analyze")) or
+                "vs " in user_input_lower or
+                "versus" in user_input_lower or
+                "how does" in user_input_lower or
+                "how will" in user_input_lower or
+                "why does" in user_input_lower or
+                "why is" in user_input_lower or
+                "why would" in user_input_lower or
+                "in depth" in user_input_lower or
+                "detailed" in user_input_lower or
+                "ways to" in user_input_lower or
+                "methods to" in user_input_lower or
+                "approaches to" in user_input_lower or
+                ("help" in user_input_lower and len(user_input_lower.split()) > 5) or
+                ("impact" in user_input_lower and len(user_input_lower.split()) > 4) or
+                
+                # CRITICAL MISSING PATTERNS that caused misrouting:
+                
+                # Decision-making patterns
+                "deciding between" in user_input_lower or
+                "should i choose" in user_input_lower or
+                "factors should i consider" in user_input_lower or
+                "factors to consider" in user_input_lower or
+                "what factors" in user_input_lower or
+                
+                # Balance/trade-off patterns  
+                "how should" in user_input_lower or
+                "how can" in user_input_lower or
+                "balance" in user_input_lower or
+                "trade-offs" in user_input_lower or
+                "trade offs" in user_input_lower or
+                
+                # Analysis request patterns
+                "analyze" in user_input_lower or
+                "analysis" in user_input_lower or
+                "multiple approaches" in user_input_lower or
+                "different approaches" in user_input_lower or
+                "various approaches" in user_input_lower or
+                "effectiveness" in user_input_lower or
+                
+                # Complex problem-solving patterns
+                "address the problem" in user_input_lower or
+                "solve the problem" in user_input_lower or
+                "while preserving" in user_input_lower or
+                "while maintaining" in user_input_lower or
+                
+                # Ethical/policy patterns
+                "ethical implications" in user_input_lower or
+                "implications" in user_input_lower or
+                "arguments for and against" in user_input_lower or
+                "for and against" in user_input_lower or
+                
+                # Rights/governance patterns
+                user_input_lower.startswith("should governments") or
+                user_input_lower.startswith("should companies") or
+                user_input_lower.startswith("should society") or
+                "rights" in user_input_lower or
+                "needs" in user_input_lower or
+                
+                # Complex "what" questions that need analysis
+                (user_input_lower.startswith("what are") and 
+                 ("benefits" in user_input_lower or "risks" in user_input_lower or 
+                  "implications" in user_input_lower or "effects" in user_input_lower or
+                  "consequences" in user_input_lower)) or
+                  
+                # Long questions are likely complex (>15 words often need analysis)
+                len(user_input_lower.split()) > 15
+            )
             
             # Exploratory task indicators  
             exploratory_rule_match = (user_input_lower.startswith(("find connections", "discover patterns", "explore", "brainstorm")) or

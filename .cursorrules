@@ -142,6 +142,38 @@ These rules prevent the exact issues that required emergency cleanup:
 * Always include request\_id in log context.
 * **ENFORCE:** All production code must use `logger.info()` not `print()` statements.
 
+## **MCP Server Integration & Context Awareness**
+
+### **🔌 Available MCP Servers**
+
+You have access to two powerful MCP servers for enhanced development assistance:
+
+#### **📁 Jinni MCP Server** 
+- **Purpose**: Intelligent project context reading with `.contextfiles` support
+- **Use When**: Need to understand current codebase structure, read multiple files efficiently, or get focused file context
+- **Best Practice**: Use `mcp_jinni_read_context` with empty `rules: []` for sensible defaults, or specify `targets: ["specific/files"]` for focused reading
+
+#### **🧠 Pieces MCP Server**
+- **Purpose**: Access development history, past decisions, and debugging solutions  
+- **Use When**: Encountering repeated issues, need context on past solutions, or want to avoid debugging loops
+- **Best Practice**: Query specific problems like "What TigerGraph issues did we solve?" or "How did we fix Ollama startup problems?"
+
+### **🔄 Breaking Debugging Loops**
+
+**CRITICAL: Before diving into complex debugging, ALWAYS:**
+
+1. **Check Development History**: Use `mcp_Pieces_ask_pieces_ltm` to ask about similar issues
+2. **Query Specific Problems**: "What [specific technology] issues have we encountered and solved?"
+3. **Look for Patterns**: Search for repeated error messages or debugging sessions
+4. **Apply Known Solutions**: Reference successful fixes from previous sessions
+
+### **🎯 Proactive Context Strategy**
+
+- **Start Sessions**: Query Pieces for recent context on the current task area
+- **Before Major Changes**: Use Jinni to read current project state
+- **When Stuck**: Ask Pieces about similar debugging loops and their solutions
+- **Document Decisions**: Create Pieces memories for major breakthroughs
+
 ## **Common Commands & Troubleshooting**
 
 ### **Local Development**

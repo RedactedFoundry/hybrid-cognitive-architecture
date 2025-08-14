@@ -32,7 +32,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import structlog
 
-from clients.ollama_client import get_ollama_client
+from clients.llama_cpp_client import get_llama_cpp_client
 from clients.redis_client import get_redis_connection
 from clients.tigervector_client import get_tigergraph_connection
 from config import Config
@@ -62,17 +62,25 @@ async def _verify_services_startup():
     """Verify that core services are available at startup."""
     logger.info("Verifying core services...")
     
-    # Check Ollama
+    # Check llama.cpp servers
     try:
-        ollama_client = get_ollama_client()
-        if await ollama_client.health_check():
-            logger.info("✅ Ollama service is available")
+        llamacpp_client = await get_llama_cpp_client()
+        # Check both servers
+        huihui_healthy = await llamacpp_client.health_check("huihui-oss20b-llamacpp")
+        mistral_healthy = await llamacpp_client.health_check("mistral-7b-llamacpp")
+        
+        if huihui_healthy and mistral_healthy:
+            logger.info("✅ Both llama.cpp servers are available")
+        elif huihui_healthy:
+            logger.warning("⚠️ Only HuiHui llama.cpp server is available")
+        elif mistral_healthy:
+            logger.warning("⚠️ Only Mistral llama.cpp server is available")
         else:
-            logger.warning("⚠️ Ollama service health check failed")
+            logger.warning("⚠️ No llama.cpp servers are available")
     except (ConnectionError, TimeoutError) as e:
-        logger.error("Ollama service connection failed", error=str(e), error_type=type(e).__name__)
+        logger.error("llama.cpp service connection failed", error=str(e), error_type=type(e).__name__)
     except Exception as e:
-        logger.error("Ollama service unexpected error", error=str(e), error_type=type(e).__name__)
+        logger.error("llama.cpp service unexpected error", error=str(e), error_type=type(e).__name__)
     
     # Check Redis (optional for startup)
     try:

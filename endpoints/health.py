@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter
 import structlog
 
-from clients.ollama_client import get_ollama_client
+from clients.llama_cpp_client import get_llama_cpp_client
 from clients.redis_client import get_redis_connection
 from clients.tigervector_client import get_tigergraph_connection
 from models.api_models import HealthStatus
@@ -55,21 +55,35 @@ async def health_check():
         "uptime": (datetime.now(timezone.utc) - start_time).total_seconds()
     }
     
-    # Check Ollama service
+    # Check llama.cpp services
     try:
-        ollama_client = get_ollama_client()
-        ollama_healthy = await ollama_client.health_check()
-        health_status["services"]["ollama"] = {
-            "status": "healthy" if ollama_healthy else "unhealthy",
-            "message": "LLM inference service",
+        llamacpp_client = await get_llama_cpp_client()
+        huihui_healthy = await llamacpp_client.health_check("huihui-oss20b-llamacpp")
+        mistral_healthy = await llamacpp_client.health_check("mistral-7b-llamacpp")
+        
+        health_status["services"]["llamacpp_huihui"] = {
+            "status": "healthy" if huihui_healthy else "unhealthy",
+            "message": "HuiHui OSS20B inference server (port 8081)",
             "checked_at": datetime.now(timezone.utc).isoformat()
         }
-        if not ollama_healthy:
+        
+        health_status["services"]["llamacpp_mistral"] = {
+            "status": "healthy" if mistral_healthy else "unhealthy", 
+            "message": "Mistral 7B inference server (port 8082)",
+            "checked_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        if not (huihui_healthy and mistral_healthy):
             health_status["status"] = "degraded"
     except Exception as e:
-        health_status["services"]["ollama"] = {
+        health_status["services"]["llamacpp_huihui"] = {
             "status": "error",
-            "message": f"Failed to check Ollama: {str(e)}",
+            "message": f"Failed to check HuiHui server: {str(e)}",
+            "checked_at": datetime.now(timezone.utc).isoformat()
+        }
+        health_status["services"]["llamacpp_mistral"] = {
+            "status": "error",
+            "message": f"Failed to check Mistral server: {str(e)}",
             "checked_at": datetime.now(timezone.utc).isoformat()
         }
         health_status["status"] = "degraded"

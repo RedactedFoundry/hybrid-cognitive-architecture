@@ -1,0 +1,69 @@
+// Manual TigerGraph Data Entry Examples
+// Run these commands in GraphStudio or via GSQL CLI
+
+// === BASIC DATA INSERTION ===
+
+// Add a person (yourself)
+INSERT INTO Person VALUES ("user_001", "RedactedFoundry", "2025-08-11 23:00:00");
+
+// Add an AI persona
+INSERT INTO AIPersona VALUES ("ai_council_v1", "Hybrid AI Council", 1, "2025-08-11 23:00:00");
+
+// Add a preference
+INSERT INTO Preference VALUES ("pref_001", "creative_responses", "response_style", 0.8, "2025-08-11 23:00:00");
+
+// Add a conversation
+INSERT INTO Conversation VALUES ("conv_001", "2025-08-11 23:00:00", "Initial system testing", 2);
+
+// Add a message
+INSERT INTO Message VALUES ("msg_001", "Hello, system test message", "2025-08-11 23:00:00", "user", 25);
+
+// Add knowledge
+INSERT INTO Knowledge VALUES ("know_001", "User prefers concise, technical responses", 0.9, "conversation_analysis", "2025-08-11 23:00:00", "user_preferences");
+
+// Add a decision
+INSERT INTO Decision VALUES ("dec_001", "How to respond to user query?", "Provide technical detail with examples", "User shows expertise, wants specifics", 0.85, "2025-08-11 23:00:00");
+
+// === RELATIONSHIPS ===
+
+// Connect person to preference
+INSERT INTO HAS_PREFERENCE VALUES ("user_001", "pref_001", 0.9);
+
+// Connect person to conversation
+INSERT INTO PARTICIPATES_IN VALUES ("user_001", "conv_001", "participant");
+
+// Connect AI to conversation
+INSERT INTO PARTICIPATES_IN VALUES ("ai_council_v1", "conv_001", "assistant");
+
+// Connect conversation to message
+INSERT INTO CONTAINS VALUES ("conv_001", "msg_001", 1);
+
+// Connect message to author
+INSERT INTO AUTHORED_BY VALUES ("msg_001", "user_001");
+
+// Connect AI to knowledge
+INSERT INTO LEARNS_FROM VALUES ("ai_council_v1", "know_001", 0.8);
+
+// Connect knowledge to conversation
+INSERT INTO DERIVED_FROM VALUES ("know_001", "conv_001", 0.9);
+
+// Connect decision to knowledge
+INSERT INTO INFORMED_BY VALUES ("dec_001", "know_001", 0.7);
+
+// === QUERY EXAMPLES ===
+
+// See all your data
+SELECT * FROM Person;
+SELECT * FROM Conversation;
+SELECT * FROM Message;
+
+// Find all conversations you participated in
+SELECT c.* FROM Person p, Conversation c 
+WHERE p.id == "user_001" 
+AND p -(PARTICIPATES_IN)- c;
+
+// Find all knowledge derived from your conversations
+SELECT k.* FROM Person p, Conversation c, Knowledge k
+WHERE p.id == "user_001"
+AND p -(PARTICIPATES_IN)- c
+AND k -(DERIVED_FROM)- c;

@@ -1,14 +1,24 @@
 # 🎯 Current Issues & Priorities
 
-> **Last Updated**: August 10, 2025 @ 2:45am
-> **Status**: Constitution v5.4 Architecture COMPLETED - VRAM Optimization RESOLVED
+> **Last Updated**: August 13, 2025 @ 10:34pm
+> **Status**: PRODUCTION READY - MCP Integration COMPLETED - Sprint 4 Ready
 
 ## ✅ **MAJOR ACCOMPLISHMENTS**
 
+### **🎉 MCP Server Integration & Baseline Optimization COMPLETED (August 11, 2025)**
+- ✅ **Baseline Performance**: 9.8/10 quality, 94.4% routing accuracy, 0% template pollution (vs 5.3/10, 55.6%, 38.9% initial)
+- ✅ **MCP Server Integration**: Pieces LTM + Jinni context servers connected with debugging loop prevention
+- ✅ **Data Persistence**: Critical fix - TigerGraph/Redis data now persists across restarts (Docker volumes)
+- ✅ **Cloud-Ready Refactor**: All hardcoded paths → environment variables, Sprint 4 deployment ready
+- ✅ **VRAM Optimization**: 94.6% → 65.3% usage (freed 7GB), virtual memory pressure resolved
+- ✅ **Auto-Startup**: Docker + llama.cpp startup/health with Windows-safe UTF-8 logs
+- ✅ **TigerGraph Database**: Working schema with sample data, GraphStudio accessible, reserved word fixes
+- ✅ **JSON Prompting**: Domain-agnostic analytical framework with Perplexity v1.3 improvements
+
 ### **🎉 Constitution v5.4 Architecture COMPLETED (August 10, 2025)**
 - ✅ **HuiHui GPT-OSS 20B + Mistral 7B architecture** fully operational
-- ✅ **llama.cpp integration** working perfectly as generator backend  
-- ✅ **ModelRouter** abstracts Ollama vs llama.cpp seamlessly
+- ✅ **llama.cpp integration** working as unified backend (generator + verifier)
+- ✅ **ModelRouter** routes exclusively to llama.cpp (Ollama removed)
 - ✅ **Simple Generator-Verifier flow** replaces legacy multi-agent complexity
 - ✅ **GPT-5 backup system** implemented (with Mistral substitute)
 - ✅ **User override commands** working ("proceed anyway", "explain more", etc.)
@@ -16,7 +26,7 @@
 - ✅ **Streaming & Direct orchestrator** both use Constitution v5.4 flow
 
 ### **🔧 CRITICAL VRAM OPTIMIZATION RESOLVED (August 10, 2025)**
-- ✅ **Ollama context bloat fixed**: Force `num_ctx: 8192` prevents 131k context
+- ✅ **Ollama removed**: Registry/VRAM issues eliminated by unifying on llama.cpp
 - ✅ **Mistral VRAM usage**: Reduced from 9.2GB → 6.6GB (28% improvement)
 - ✅ **Total VRAM pressure**: From 95.5% → 86.6% utilization  
 - ✅ **Model timeout issues**: Completely resolved
@@ -76,7 +86,7 @@
 
 ## 🔥 **Critical (Fix ASAP)**
 
-- [ ] **Production Testing**: Comprehensive end-to-end system validation
+- [ ] **Production Testing**: Comprehensive end-to-end validation (post-llama.cpp unification)
 - [ ] **Voice System Optimization**: Implement real-time streaming and "being typed" effect  
 - [ ] **KIP System Refinement**: Make economic system real-world ready
 
@@ -191,8 +201,8 @@
 
 ### **✅ FULLY OPERATIONAL**
 - **AI Council**: Constitution v5.4 architecture fully implemented and tested
-- **Generator-Verifier**: HuiHui GPT-OSS 20B + Mistral 7B working perfectly
-- **ModelRouter**: Seamless integration of Ollama + llama.cpp backends
+- **Generator-Verifier**: HuiHui GPT-OSS 20B + Mistral 7B (llama.cpp) working
+- **ModelRouter**: llama.cpp-only backend
 - **Database**: Redis + TigerGraph fully functional  
 - **API**: FastAPI server with WebSocket support
 - **VRAM Management**: Optimized for stable 86.6% utilization
@@ -208,4 +218,18 @@
 - **Voice Enhancement**: Real-time streaming implementation
 - **KIP Refinement**: Economic system optimization
 
-**The Constitution v5.4 architecture is complete and production-ready! The system runs efficiently with optimized VRAM usage and streamlined generator-verifier flow. 🚀**
+---
+
+## 🧠 **FUTURE IDEAS (Not Current Priorities)**
+
+### **System Self-Awareness Module**
+- Give orchestrator curated knowledge of its own architecture and capabilities
+- Could explain its 3-layer system (Pheromind/Council/KIP) to users
+- Could suggest optimizations and identify issues
+- Could improve routing decisions based on system state
+- **Scope**: High-level architecture knowledge, NOT full codebase access
+- **Benefits**: Better user explanations, self-improvement, development partnership
+- **Risks**: Information overload, security concerns
+- **Status**: Shelved for post-Sprint 4 consideration
+
+**The Constitution v5.4 architecture is complete and production-ready! Unified llama.cpp backend removes Ollama registry issues. Voice TTS is CPU-only (expected slower), streaming to be added. 🚀**

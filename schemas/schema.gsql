@@ -18,7 +18,7 @@ CREATE VERTEX Preference(PRIMARY_ID pref_id STRING, value STRING, pref_type STRI
 
 // Agent and Tool Vertices
 // A vertex representing an autonomous KIP (Knowledge-Incentive Protocol) agent.
-CREATE VERTEX KIPAgent(PRIMARY_ID id STRING, function STRING, status STRING, created_at DATETIME)
+CREATE VERTEX KIPAgent(PRIMARY_ID id STRING, agent_role STRING, status STRING, created_at DATETIME)
 
 // A vertex representing a tool or skill the AI can use.
 CREATE VERTEX Tool(PRIMARY_ID name STRING, description STRING, tool_type STRING, version STRING)

@@ -37,21 +37,16 @@ dev-setup: deps services init-db
 	@echo "✅ Development environment ready!"
 	@echo "🚀 Run 'make verify' to test everything works"
 
-# 🚀 MASTER STARTUP - ONE COMMAND FOR EVERYTHING
+# 🚀 MASTER STARTUP - ONE COMMAND FOR EVERYTHING  
 start-all:
 	@echo "🚀 Starting complete Hybrid AI Council system..."
-	@echo "   (equivalent to: python scripts/start_everything.py)"
-	python scripts/start_everything.py
-
-start-all-with-api:
-	@echo "🚀 Starting complete system with API server..."
-	@echo "   (equivalent to: python scripts/start_everything.py --with-api)"
-	python scripts/start_everything.py --with-api
+	@echo "   (comprehensive startup with auto-dependencies)"
+	python start_all.py
 
 quick-start:
-	@echo "⚡ Quick start (no verification)..."
-	@echo "   (equivalent to: python scripts/start_everything.py --skip-verify)"
-	python scripts/start_everything.py --skip-verify
+	@echo "⚡ Quick start..."
+	@echo "   (same as start-all - comprehensive startup)"
+	python start_all.py
 
 deps:
 	@echo "📦 Installing Python dependencies..."
@@ -114,8 +109,10 @@ health:
 	@echo "🟢 TigerGraph:"
 	@curl -s http://localhost:14240/api/ping || echo "❌ TigerGraph not responding"
 	@echo ""
-	@echo "🔵 Ollama:"
-	@curl -s http://localhost:11434/api/tags || echo "❌ Ollama not responding"
+	@echo "🟣 llama.cpp HuiHui:"
+	@curl -s http://127.0.0.1:8081/health || echo "❌ llama.cpp HuiHui not responding"
+	@echo "🟣 llama.cpp Mistral:"
+	@curl -s http://127.0.0.1:8082/health || echo "❌ llama.cpp Mistral not responding"
 
 status:
 	@echo "📊 System Status:"
@@ -158,17 +155,10 @@ install-hooks:
 	pre-commit install
 
 models:
-	@echo "🤖 Preparing required models (2-model architecture)..."
-	@echo "   - Generator (local): huihui-oss20b via Modelfile"
-	@echo "   - Verifier: hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"
-	@echo ""
-	@echo "Windows (PowerShell) commands:"
-	@echo "  & 'C:\\Users\\Jake\\AppData\\Local\\Programs\\Ollama\\ollama.exe' create huihui-oss20b -f '$(CURDIR)\\ollama\\Modelfile.huihui-oss20b'"
-	@echo "  & 'C:\\Users\\Jake\\AppData\\Local\\Programs\\Ollama\\ollama.exe' pull hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"
-	@echo ""
-	@echo "Linux/macOS:"
-	@echo "  ollama create huihui-oss20b -f ollama/Modelfile.huihui-oss20b"
-	@echo "  ollama pull hf.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF:Q4_K_M"
+	@echo "🤖 Preparing required models (llama.cpp)"
+	@echo "   - Set LLAMACPP_MODEL_DIR to your GGUF directory"
+	@echo "   - LLAMACPP_PORT_HUIHUI / LLAMACPP_PORT_MISTRAL to set ports"
+	@echo "   - Start servers: python scripts/start_llamacpp_servers.py"
 
 # Quick Development Workflow
 dev: clean services test-quick

@@ -1,22 +1,20 @@
 """
-Model Router - Routes requests to appropriate LLM backend (Ollama vs llama.cpp)
+Model Router - Routes requests to the llama.cpp backend
 """
 
 import asyncio
 from typing import Dict, Any, Optional
 import structlog
 
-from clients.ollama_client import OllamaClient
 from clients.llama_cpp_client import LlamaCppClient, get_llama_cpp_client
 from config.models import CouncilModels
 
 logger = structlog.get_logger(__name__)
 
 class ModelRouter:
-    """Routes model requests to appropriate backend (Ollama or llama.cpp)."""
+    """Routes model requests to llama.cpp backend only."""
     
     def __init__(self):
-        self.ollama_client = OllamaClient()
         self.llamacpp_client: Optional[LlamaCppClient] = None
     
     async def _get_llamacpp_client(self) -> LlamaCppClient:
@@ -47,40 +45,13 @@ class ModelRouter:
                    prompt_length=len(prompt))
         
         try:
-            if provider == "llamacpp":
-                # Route to llama.cpp server
-                client = await self._get_llamacpp_client()
-                result = await client.generate(prompt, **kwargs)
-                
-                # Add routing metadata
-                result["provider"] = "llamacpp"
-                result["model_alias"] = model_alias
-                return result
-                
-            elif provider == "ollama":
-                # Route to Ollama
-                response = await self.ollama_client.generate_response(
-                    prompt=prompt,
-                    model_alias=model_name,
-                    **kwargs
-                )
-                
-                # Normalize format to match llama.cpp
-                content = response.text
-                return {
-                    "content": content,
-                    "model": f"{model_name}-ollama",
-                    "model_alias": model_alias,
-                    "provider": "ollama",
-                    "usage": {
-                        "completion_tokens": response.tokens_generated,
-                        "prompt_tokens": len(prompt.split()),  # Estimate from prompt
-                        "total_tokens": response.tokens_generated + len(prompt.split())
-                    }
-                }
-            
-            else:
-                raise ValueError(f"Unknown provider: {provider}")
+            # Route to llama.cpp server
+            client = await self._get_llamacpp_client()
+            result = await client.generate(prompt, model_name=model_name, **kwargs)
+            # Add routing metadata
+            result["provider"] = "llamacpp"
+            result["model_alias"] = model_alias
+            return result
                 
         except Exception as e:
             logger.error("model_routing_failed", 
@@ -91,22 +62,14 @@ class ModelRouter:
     
     async def health_check(self, model_alias: str) -> bool:
         """Check if the backend for a specific model is healthy."""
-        provider = CouncilModels.get_model_provider(model_alias)
-        
         try:
-            if provider == "llamacpp":
-                client = await self._get_llamacpp_client()
-                return await client.health_check()
-            elif provider == "ollama":
-                # Simple check - OllamaClient doesn't have list_models, so basic ping
-                # For now, assume healthy if client exists (TODO: implement proper health check)
-                return self.ollama_client is not None
-            else:
-                return False
+            client = await self._get_llamacpp_client()
+            model_name = CouncilModels.get_model_name(model_alias)
+            return await client.health_check(model_name)
         except Exception as e:
             logger.warning("health_check_failed", 
                           model_alias=model_alias, 
-                          provider=provider,
+                          provider="llamacpp",
                           error=str(e))
             return False
     
@@ -139,10 +102,10 @@ async def quick_test():
         provider = CouncilModels.get_model_provider(model)
         print(f"{model} ({provider}): {'✅ HEALTHY' if status else '❌ UNHEALTHY'}")
     
-    # Test generation for each provider type
+    # Test generation for each configured model
     models_to_test = [
-        ("huihui-generator", "llamacpp"),  # HuiHui generator
-        ("mistral-verifier", "ollama")     # Mistral verifier
+        ("huihui-generator", "llamacpp"),
+        ("mistral-verifier", "llamacpp")
     ]
     
     for model_alias, expected_provider in models_to_test:

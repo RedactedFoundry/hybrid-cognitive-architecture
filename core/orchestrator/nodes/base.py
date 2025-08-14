@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 
 import structlog
 
-from utils.client_utils import get_cached_ollama_client
 
 from ..models import OrchestratorState
 
@@ -37,9 +36,7 @@ class BaseProcessingNode(ABC):
         self.orchestrator = orchestrator
         self.logger = structlog.get_logger(self.__class__.__name__)
         
-    async def _get_cached_ollama_client(self):
-        """Get a cached Ollama client for improved performance and cost savings."""
-        return await get_cached_ollama_client(self.__class__.__name__)
+    # Ollama client helpers removed; all routing uses llama.cpp via ModelRouter
 
 
 class CognitiveProcessingNode(BaseProcessingNode):

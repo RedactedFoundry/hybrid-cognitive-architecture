@@ -1,0 +1,612 @@
+{
+  "summary": {
+    "json_wins": 5,
+    "baseline_wins": 6,
+    "ties": 7,
+    "dimension_analysis": {
+      "structure": {
+        "JSON": 4,
+        "BASELINE": 2,
+        "TIE": 12
+      },
+      "completeness": {
+        "JSON": 2,
+        "BASELINE": 7,
+        "TIE": 9
+      },
+      "actionability": {
+        "JSON": 1,
+        "BASELINE": 4,
+        "TIE": 13
+      },
+      "depth": {
+        "JSON": 2,
+        "BASELINE": 2,
+        "TIE": 14
+      },
+      "clarity": {
+        "JSON": 0,
+        "BASELINE": 0,
+        "TIE": 18
+      }
+    }
+  },
+  "detailed_comparisons": [
+    {
+      "query_num": 1,
+      "query": "What are the pros and cons of starting an AI business in 2025 and how can we maximize success?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 10,
+          "completeness": 10,
+          "actionability": 10,
+          "depth": 5,
+          "clarity": 10,
+          "overall": 9.0
+        },
+        "json_scores": {
+          "structure": 10,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 5,
+          "clarity": 10,
+          "overall": 8.2
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "BASELINE_BETTER",
+          "actionability": "BASELINE_BETTER",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "BASELINE_BETTER"
+        },
+        "winner": "BASELINE",
+        "score_difference": -0.8000000000000007
+      }
+    },
+    {
+      "query_num": 2,
+      "query": "Should I open a restaurant franchise or start an independent restaurant? Analyze the key factors and trade-offs.",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 10,
+          "actionability": 8,
+          "depth": 5,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.4
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "BASELINE_BETTER",
+          "actionability": "JSON_BETTER",
+          "depth": "JSON_BETTER",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "JSON",
+        "score_difference": 0.40000000000000036
+      }
+    },
+    {
+      "query_num": 3,
+      "query": "Compare the advantages and disadvantages of remote work vs hybrid work for a growing tech company.",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 10,
+          "completeness": 10,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 9.4
+        },
+        "json_scores": {
+          "structure": 10,
+          "completeness": 10,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 9.4
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "TIE",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "TIE",
+        "score_difference": 0.0
+      }
+    },
+    {
+      "query_num": 4,
+      "query": "I'm 25 and deciding between pursuing an MBA or gaining 2 years of work experience. What factors should I consider?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 10,
+          "actionability": 8,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.4
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "BASELINE_BETTER",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "BASELINE",
+        "score_difference": -0.40000000000000036
+      }
+    },
+    {
+      "query_num": 5,
+      "query": "What are the benefits and risks of buying a house vs renting in today's market, and how should I decide?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 4,
+          "completeness": 10,
+          "actionability": 8,
+          "depth": 8,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "json_scores": {
+          "structure": 4,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 10,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "BASELINE_BETTER",
+          "actionability": "TIE",
+          "depth": "JSON_BETTER",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "TIE",
+        "score_difference": 0.0
+      }
+    },
+    {
+      "query_num": 6,
+      "query": "How should I balance career advancement with work-life balance when considering a demanding new job offer?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 10,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.8
+        },
+        "json_scores": {
+          "structure": 10,
+          "completeness": 10,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 9.4
+        },
+        "comparison": {
+          "structure": "JSON_BETTER",
+          "completeness": "TIE",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "JSON_BETTER"
+        },
+        "winner": "JSON",
+        "score_difference": 0.5999999999999996
+      }
+    },
+    {
+      "query_num": 7,
+      "query": "Explain the trade-offs between renewable energy sources and fossil fuels from economic, environmental, and practical perspectives.",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 10,
+          "actionability": 10,
+          "depth": 10,
+          "clarity": 10,
+          "overall": 9.4
+        },
+        "json_scores": {
+          "structure": 4,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 7.4
+        },
+        "comparison": {
+          "structure": "BASELINE_BETTER",
+          "completeness": "BASELINE_BETTER",
+          "actionability": "BASELINE_BETTER",
+          "depth": "BASELINE_BETTER",
+          "clarity": "TIE",
+          "overall": "BASELINE_BETTER"
+        },
+        "winner": "BASELINE",
+        "score_difference": -2.0
+      }
+    },
+    {
+      "query_num": 8,
+      "query": "What are the pros and cons of different approaches to treating depression: therapy, medication, lifestyle changes, and combinations?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 10,
+          "clarity": 10,
+          "overall": 9.0
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 10,
+          "clarity": 10,
+          "overall": 9.0
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "TIE",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "TIE",
+        "score_difference": 0.0
+      }
+    },
+    {
+      "query_num": 9,
+      "query": "Compare and contrast the benefits and limitations of electric vehicles versus traditional gasoline cars in 2025.",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 10,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.6
+        },
+        "json_scores": {
+          "structure": 10,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.6
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "TIE",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "TIE",
+        "score_difference": 0.0
+      }
+    },
+    {
+      "query_num": 10,
+      "query": "How can cities reduce traffic congestion? Analyze multiple approaches and their effectiveness.",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.4
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.4
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "TIE",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "TIE",
+        "score_difference": 0.0
+      }
+    },
+    {
+      "query_num": 11,
+      "query": "What are innovative ways to make education more engaging and effective for modern students?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 5,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 5,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "TIE",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "TIE",
+        "score_difference": 0.0
+      }
+    },
+    {
+      "query_num": 12,
+      "query": "How can we address the problem of social media addiction while preserving the benefits of connectivity?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.4
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 7,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 7.8
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "TIE",
+          "actionability": "BASELINE_BETTER",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "BASELINE_BETTER"
+        },
+        "winner": "BASELINE",
+        "score_difference": -0.6000000000000005
+      }
+    },
+    {
+      "query_num": 13,
+      "query": "What are the ethical implications of AI in hiring decisions, and how should companies balance efficiency with fairness?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 4,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 7.4
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 10,
+          "actionability": 8,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.4
+        },
+        "comparison": {
+          "structure": "JSON_BETTER",
+          "completeness": "JSON_BETTER",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "JSON_BETTER"
+        },
+        "winner": "JSON",
+        "score_difference": 1.0
+      }
+    },
+    {
+      "query_num": 14,
+      "query": "Should governments regulate social media platforms more strictly? Analyze the arguments for and against.",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 4,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 7.8
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "comparison": {
+          "structure": "JSON_BETTER",
+          "completeness": "TIE",
+          "actionability": "BASELINE_BETTER",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "JSON",
+        "score_difference": 0.20000000000000018
+      }
+    },
+    {
+      "query_num": 15,
+      "query": "How should society balance individual privacy rights with collective security needs in the digital age?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.4
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 6,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "BASELINE_BETTER",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "BASELINE",
+        "score_difference": -0.40000000000000036
+      }
+    },
+    {
+      "query_num": 16,
+      "query": "What lessons can modern entrepreneurs learn from the dot-com bubble of the late 1990s?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 2,
+          "completeness": 4,
+          "actionability": 5,
+          "depth": 5,
+          "clarity": 8,
+          "overall": 4.8
+        },
+        "json_scores": {
+          "structure": 2,
+          "completeness": 4,
+          "actionability": 5,
+          "depth": 5,
+          "clarity": 8,
+          "overall": 4.8
+        },
+        "comparison": {
+          "structure": "TIE",
+          "completeness": "TIE",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "TIE"
+        },
+        "winner": "TIE",
+        "score_difference": 0.0
+      }
+    },
+    {
+      "query_num": 17,
+      "query": "Compare the industrial revolution's impact on society with the current AI revolution's potential effects.",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 4,
+          "completeness": 8,
+          "actionability": 8,
+          "depth": 5,
+          "clarity": 10,
+          "overall": 7.0
+        },
+        "json_scores": {
+          "structure": 7,
+          "completeness": 10,
+          "actionability": 8,
+          "depth": 5,
+          "clarity": 10,
+          "overall": 8.0
+        },
+        "comparison": {
+          "structure": "JSON_BETTER",
+          "completeness": "JSON_BETTER",
+          "actionability": "TIE",
+          "depth": "TIE",
+          "clarity": "TIE",
+          "overall": "JSON_BETTER"
+        },
+        "winner": "JSON",
+        "score_difference": 1.0
+      }
+    },
+    {
+      "query_num": 18,
+      "query": "How do different countries' approaches to healthcare (US, UK, Canada, Japan) compare in terms of outcomes and costs?",
+      "comparison": {
+        "baseline_scores": {
+          "structure": 7,
+          "completeness": 8,
+          "actionability": 10,
+          "depth": 7,
+          "clarity": 10,
+          "overall": 8.4
+        },
+        "json_scores": {
+          "structure": 4,
+          "completeness": 6,
+          "actionability": 10,
+          "depth": 5,
+          "clarity": 10,
+          "overall": 7.0
+        },
+        "comparison": {
+          "structure": "BASELINE_BETTER",
+          "completeness": "BASELINE_BETTER",
+          "actionability": "TIE",
+          "depth": "BASELINE_BETTER",
+          "clarity": "TIE",
+          "overall": "BASELINE_BETTER"
+        },
+        "winner": "BASELINE",
+        "score_difference": -1.4000000000000004
+      }
+    }
+  ]
+}
