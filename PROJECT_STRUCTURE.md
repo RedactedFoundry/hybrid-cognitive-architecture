@@ -244,13 +244,13 @@ D:\Council-Project\
 │   ├── 2-cursor-ai-hybrid-build-chat-7-28-25.md
 │   ├── ...
 │   └── 12-cursor-ai-hybrid-build-chat-8-5-25.md
-├── dev-logs/                          # Development logs
-│   └── dev-log-Hybrid-AI-Council.md   # Historical development progress
+│   
 └── Project Docs/                      # Project documentation
     ├── CODE_PATTERNS.md               # Code patterns and conventions
     ├── DEBUGGING_GUIDE.md             # Debugging and troubleshooting
     ├── SYSTEM_VERIFICATION_GUIDE.md   # System verification procedures
     └── code-audit-prompt.md           # IDE/AI coding issues guide
+    └── dev-log-Hybrid-AI-Council.md   # Historical development progress
 ```
 
 **Purpose**: Stores large historical files to improve main repo performance
@@ -321,6 +321,7 @@ D:\Council-Project\
 | CURRENT_ISSUES.md | 🔄 Updated | Production-ready status and accomplishments | Aug 12 |
 | project-docs/dev-log-Hybrid-AI-Council.md | 🔄 Updated | Complete session documentation | Aug 12 |
 | static/claude-ui-mockup.html | ✅ Created | Standalone Claude UI interactive mockup (no backend) | Aug 14 |
+| project-docs/dev-log-Hybrid-AI-Council.md | 🔄 Updated | Logged llama.cpp migration, Ollama removal, UI mockup, OG.env purge | Aug 14 |
 
 ## 🎯 **Key Architectural Decisions**
 
