@@ -168,7 +168,7 @@ class TestHealthEndpoints:
     
     @patch('endpoints.health.get_ollama_client')
     @patch('endpoints.health.get_redis_connection') 
-    @patch('clients.tigervector_client.get_tigergraph_connection')
+    @patch('clients.tigergraph_client.get_tigergraph_connection')
     def test_health_check_services(self, mock_tg, mock_redis, mock_ollama, client):
         """Test health check service status."""
         # Mock service availability

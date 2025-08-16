@@ -32,8 +32,8 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 3. **Start other services**:
    ```bash
    docker-compose up -d redis
-   # SGLang runs via Python scripts (not Docker)
-   python scripts/start_sglang_multi.py
+   # Start llama.cpp servers (configure LLAMA_SERVER_BIN and PYTHONPATH for config)
+   PYTHONPATH=.:./config LLAMA_SERVER_BIN="D:/llama.cpp/llama-server.exe" python scripts/start_llamacpp_servers.py
    ```
 
 4. **Initialize database**:
@@ -43,7 +43,7 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 
 5. **Access services**:
    - **TigerGraph GraphStudio**: http://localhost:14240 (tigergraph/tigergraph)
-   - **SGLang Council**: http://localhost:5000-5002 (analytical/creative/coordinator)
+   - **llama.cpp servers**: http://localhost:8081 (HuiHui) and http://localhost:8082 (Mistral)
    - **Redis**: localhost:6379
 
 ## 🏗️ Architecture
@@ -59,7 +59,7 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 - **Knowledge Graph**: TigerGraph Community Edition 4.2.0
 - **Vector Database**: TigerGraph (hybrid graph+vector)
 - **Session Storage**: Redis 8.0-alpine
-- **Local AI Models**: SGLang with RTX 4090 support
+- **Local AI Models**: llama.cpp (multi-instance) on RTX 4090
 - **Backend**: FastAPI with WebSockets
 - **Frontend**: Streamlit dashboard
 
@@ -77,25 +77,25 @@ An autonomous AI system with a three-layered cognitive architecture combining lo
 
 ```bash
 # Option 1: All services
-./scripts/setup-tigergraph.sh && docker-compose up -d redis && python scripts/start_sglang_multi.py
+./scripts/setup-tigergraph.sh && docker-compose up -d redis && PYTHONPATH=.:./config LLAMA_SERVER_BIN="D:/llama.cpp/llama-server.exe" python scripts/start_llamacpp_servers.py
 
 # Option 2: Individual services  
 docker-compose up -d redis                # Start Redis
 ./scripts/setup-tigergraph.sh             # Start TigerGraph separately
-python scripts/start_sglang_multi.py      # Start SGLang council
+PYTHONPATH=.:./config LLAMA_SERVER_BIN="D:/llama.cpp/llama-server.exe" python scripts/start_llamacpp_servers.py
 ```
 
 ### Common Tasks
 
 ```bash
 # Test connections
-python -c "from clients.tigervector_client import test_connection; test_connection()"
+python -c "from clients.tigergraph_client import test_connection; test_connection()"
 python -c "from clients.redis_client import get_redis_connection; print(get_redis_connection().ping())"
 
 # View logs
 docker logs tigergraph
 docker-compose logs redis
-# SGLang logs appear in the terminal where you ran start_sglang_multi.py
+# llama.cpp logs appear in .logs/llamacpp_servers.log (see script output)
 
 # Stop services
 docker-compose down
@@ -133,13 +133,13 @@ hybrid-cognitive-architecture/
 ### Development vs Production
 
 - **Development**: Community Edition, local models
-- **Production**: Enterprise Edition, cloud deployment
+- **Production**: Hybrid cloud deployment on Fly.io with Tailscale
 
 ## 📚 Documentation
 
 - **[TigerGraph Setup Guide](docs/TigerGraph_Community_Edition_Setup.md)**: Detailed TigerGraph Community Edition setup
-- **[Architecture Blueprint](docs/Hybrid AI Council_ Architectural Blueprint v3.8 (Final).md)**: Complete system architecture
-- **[Implementation Plan](docs/Unified Implementation Plan v2.3 (Final).md)**: Development roadmap
+- **[Architecture Blueprint](project-docs/Hybrid AI Council_ Architectural Blueprint v3.8 (Final).md)**: Complete system architecture (updated to Fly.io + llama.cpp)
+- **[Implementation Plan v4.5](project-docs/Unified-Implementation-Plan-Final-v4.5.md)**: Current roadmap (supersedes v2.3)
 
 ## 🚨 Troubleshooting
 

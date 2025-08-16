@@ -69,7 +69,7 @@ def check_tigergraph():
     print("-" * 30)
     
     try:
-        from clients.tigervector_client import get_tigergraph_connection
+        from clients.tigergraph_client import get_tigergraph_connection
         conn = get_tigergraph_connection()
         
         if not conn:

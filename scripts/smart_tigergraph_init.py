@@ -25,7 +25,7 @@ import structlog
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from clients.tigervector_client import get_tigergraph_connection, test_connection
+from clients.tigergraph_client import get_tigergraph_connection, test_connection
 
 # Set up structured logging  
 logger = structlog.get_logger("smart_tigergraph_init")

@@ -28,7 +28,7 @@ def test_tigergraph():
     logger.info("Testing TigerGraph Community Edition", component="tigergraph")
     
     try:
-        from clients.tigervector_client import test_connection, get_tigergraph_connection
+        from clients.tigergraph_client import test_connection, get_tigergraph_connection
         
         # Test basic connectivity
         if not test_connection():
@@ -266,7 +266,7 @@ def test_file_structure():
     
     required_paths = [
         "schemas/schema.gsql",
-        "clients/tigervector_client.py",
+        "clients/tigergraph_client.py",
         "clients/redis_client.py",
         "scripts/setup-tigergraph.sh",
         "scripts/setup-tigergraph.ps1",

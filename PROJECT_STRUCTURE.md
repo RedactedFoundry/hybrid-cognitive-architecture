@@ -72,7 +72,7 @@ hybrid-cognitive-architecture/
 ├── clients/                       # External service clients  
 │   ├── __init__.py
 │   ├── redis_client.py           # Redis connection and operations
-│   ├── tigervector_client.py     # TigerGraph client
+│   ├── tigergraph_client.py      # TigerGraph client
 │   ├── llama_cpp_client.py       # llama.cpp HTTP client for models
 │   └── model_router.py           # Model routing (llama.cpp only)
 │
@@ -89,7 +89,8 @@ hybrid-cognitive-architecture/
 │   └── security_headers.py
 │
 ├── schemas/                       # Database schemas
-│   └── schema.gsql               # TigerGraph schema
+│   ├── schema.gsql               # TigerGraph schema
+│   └── manual_tigergraph_examples.gsql # Manual GSQL examples (moved here)
 │
 ├── scripts/                       # Utility scripts
 │   ├── __init__.py
@@ -108,7 +109,7 @@ hybrid-cognitive-architecture/
 │   ├── index.html                # Main dashboard
 │   ├── realtime-voice.html       # Voice chat interface
 │   ├── voice-test.html           # Voice testing interface
-│   ├── claude-ui-mockup.html     # Standalone interactive UI mockup (no backend)
+│   ├── claude-ui-demo.html       # Standalone interactive React UI mockup (no backend)
 │   ├── css/
 │   │   └── styles.css
 │   └── js/
@@ -149,7 +150,7 @@ hybrid-cognitive-architecture/
 │   ├── __init__.py
 │   ├── voice_client.py           # Voice service client
 │   ├── production_voice_engines.py # Voice foundation wrapper
-│   ├── simple_voice_pipeline.py  # Simple voice pipeline
+│   ├── simple_voice_pipeline.py  # Deprecated simple mock pipeline (kept for compat)
 │   ├── orchestrator_integration.py # Voice orchestrator
 │   ├── create_test_audio.py      # Test audio generation
 │   ├── integration_test_output.wav # Test audio file
@@ -171,26 +172,19 @@ hybrid-cognitive-architecture/
 │   ├── chat_handlers.py          # Chat message handlers
 │   └── voice_handlers.py         # Voice message handlers
 │
-├── docs/                          # Documentation
+├── project-docs/                  # Documentation (canonical)
 │   ├── Hybrid AI Council_ Architectural Blueprint v3.8 (Final).md
-│   ├── Unified Implementation Plan v2.3 (Final).md
-│   ├── dev-log-Hybrid-AI-Council.md # 🔗 SYMBOLIC LINK to external storage
-│   ├── AUTONOMOUS_TRADING_SYSTEM.md
-│   ├── CODE_PATTERNS.md
-│   ├── DEBUGGING_GUIDE.md
-│   ├── ENVIRONMENT_VARIABLES.md
-│   ├── INTEGRATION_MAP.md
-│   ├── KIP_AUTONOMOUS_AGENTS_EXPLAINED.md
-│   ├── MIDDLEWARE_FIX_DOCUMENTATION.md
-│   ├── MULTI_MODEL_TEST_GUIDE.md
+│   ├── Unified-Implementation-Plan-Final-v4.5.md
+│   ├── Unified Implementation Plan v2.3 (Final).md  # (optional history; can be removed)
+│   ├── SYSTEM_VERIFICATION_GUIDE.md
 │   ├── REST_API_FIX_DOCUMENTATION.md
 │   ├── SECURITY.md
-│   ├── SYSTEM_VERIFICATION_GUIDE.md
-│   └── TigerGraph_Community_Edition_Setup.md
+│   ├── HAC_UI_Spec_and_Svelte_Prompt_v1.md
+│   └── archive/
 │
 ├── decisions/                     # Architecture decisions
 │   ├── template.md               # Decision template
-│   ├── 001-why-ollama-over-vllm.md
+│   ├── 001-why-ollama-over-vllm.md  # (archived/removed in cleanup)
 │   ├── 002-why-tigergraph-over-postgres.md
 │   ├── 003-why-smart-router-architecture.md
 │   └── 004-coqui-xtts-v2-for-council-voices.md
@@ -321,7 +315,13 @@ D:\Council-Project\
 | CURRENT_ISSUES.md | 🔄 Updated | Production-ready status and accomplishments | Aug 12 |
 | project-docs/dev-log-Hybrid-AI-Council.md | 🔄 Updated | Complete session documentation | Aug 12 |
 | static/claude-ui-mockup.html | ✅ Created | Standalone Claude UI interactive mockup (no backend) | Aug 14 |
+| static/claude-ui-mockup.html | 🔄 Updated | Replaced placeholder with full interactive React UI (no backend) | Aug 14 |
+| static/claude-ui-demo.html | ✅ Created | Standalone interactive React UI mockup (no backend) | Aug 14 |
+| static/claude-ui-demo.html | 🔄 Updated | Horizontal page tabs (one-click navigation) replace dropdown | Aug 14 |
+| static/claude-ui-demo.html | 🔄 Updated | Added Treasury page + nav, System Audit & Compliance section, Pheromind legend | Aug 14 |
+| docs/HAC_UI_Spec_and_Svelte_Prompt_v1.md | ✅ Created | End-to-end UI spec with Svelte component contracts and build prompt | Aug 14 |
 | project-docs/dev-log-Hybrid-AI-Council.md | 🔄 Updated | Logged llama.cpp migration, Ollama removal, UI mockup, OG.env purge | Aug 14 |
+| static/claude-ui-demo.html | 🔄 Updated | Token/cost meter, Cmd/Ctrl+K command palette, Projects Kanban, Calendar capacity swimlanes, KIP sparklines, expanded Treasury | Aug 14 |
 
 ## 🎯 **Key Architectural Decisions**
 
@@ -329,24 +329,5 @@ D:\Council-Project\
 2. **External Storage**: Large historical files moved to `D:\Council-Project\`
 3. **Microservices**: Voice processing isolated in separate service
 4. **Performance**: Main repo optimized to ~35K lines (was 476K+)
-
-## 🚀 **Quick Start Commands**
-
-```bash
-# Start everything with one command
-python start_all.py
-
-# Access the system
-# Main Dashboard: http://localhost:8001/static/index.html  
-# Voice Chat: http://localhost:8001/static/realtime-voice.html
-# Voice Service: http://localhost:8011/health
-# TigerGraph GraphStudio: http://localhost:14240
-```
-
-## 📈 **Performance Metrics**
-
-- **Main Repo**: ~35K lines (down from 476K+)
-- **External Storage**: ~437K lines moved to `D:\Council-Project\`
-- **Performance Gain**: ~92% reduction in main repo size
 
 - **Accessibility**: All files still accessible via symbolic links

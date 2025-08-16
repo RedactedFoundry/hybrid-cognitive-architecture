@@ -15,7 +15,7 @@ import redis.asyncio as redis
 import structlog
 
 from config import Config
-from clients.tigervector_client import get_tigergraph_connection
+from clients.tigergraph_client import get_tigergraph_connection
 from .models import AgentBudget, Transaction, TransactionType, EconomicAnalytics
 from .budget_manager import BudgetManager
 from .transaction_processor import TransactionProcessor

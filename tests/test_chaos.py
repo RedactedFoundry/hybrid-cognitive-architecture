@@ -351,7 +351,7 @@ async def test_kip_layer_partial_failure():
         pytest.skip(f"Cannot test KIP resilience - baseline failed: {e}")
     
     # Simulate TigerGraph connection issues
-    with patch('clients.tigervector_client.get_tigergraph_connection') as mock_tg:
+    with patch('clients.tigergraph_client.get_tigergraph_connection') as mock_tg:
         mock_tg.side_effect = ConnectionError("Simulated TigerGraph failure")
         
         try:

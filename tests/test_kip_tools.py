@@ -329,7 +329,7 @@ class TestKIPAgentToolIntegration:
     @pytest.mark.asyncio
     async def test_analyst_agent_tool_access(self, agent_manager):
         """Test that analyst agents get full web tool access."""
-        with patch('clients.tigervector_client.get_tigergraph_connection') as mock_tg:
+        with patch('clients.tigergraph_client.get_tigergraph_connection') as mock_tg:
             mock_tg.return_value = MagicMock()
             
             # Load tools for an analyst agent
@@ -349,7 +349,7 @@ class TestKIPAgentToolIntegration:
     @pytest.mark.asyncio
     async def test_creator_agent_limited_tool_access(self, agent_manager):
         """Test that creator agents get limited web tool access."""
-        with patch('clients.tigervector_client.get_tigergraph_connection') as mock_tg:
+        with patch('clients.tigergraph_client.get_tigergraph_connection') as mock_tg:
             mock_tg.return_value = MagicMock()
             
             # Load tools for a creator agent
@@ -368,7 +368,7 @@ class TestKIPAgentToolIntegration:
     @pytest.mark.asyncio
     async def test_default_agent_no_web_tools(self, agent_manager):
         """Test that default agents don't get web tool access."""
-        with patch('clients.tigervector_client.get_tigergraph_connection') as mock_tg:
+        with patch('clients.tigergraph_client.get_tigergraph_connection') as mock_tg:
             mock_tg.return_value = MagicMock()
             
             # Load tools for a default agent
@@ -461,7 +461,7 @@ class TestKIPToolsIntegrationScenarios:
         agent_manager = AgentManager(config)
         tool_registry = ToolRegistry(config)
         
-        with patch('clients.tigervector_client.get_tigergraph_connection') as mock_tg:
+        with patch('clients.tigergraph_client.get_tigergraph_connection') as mock_tg:
             mock_tg.return_value = MagicMock()
             
             # Load analyst tools

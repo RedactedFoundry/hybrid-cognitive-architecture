@@ -307,7 +307,7 @@ def check_tigergraph_graph_exists():
     try:
         # Import here to avoid circular imports
         sys.path.append('.')
-        from clients.tigervector_client import get_tigergraph_connection, is_graph_initialized
+        from clients.tigergraph_client import get_tigergraph_connection, is_graph_initialized
         
         conn = get_tigergraph_connection()
         if conn is None:

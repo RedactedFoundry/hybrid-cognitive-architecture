@@ -1,6 +1,6 @@
 # 🎯 Current Issues & Priorities
 
-> **Last Updated**: August 13, 2025 @ 10:34pm
+> **Last Updated**: August 16, 2025 @ 1:33am
 > **Status**: PRODUCTION READY - MCP Integration COMPLETED - Sprint 4 Ready
 
 ## ✅ **MAJOR ACCOMPLISHMENTS**
@@ -103,13 +103,13 @@
 
 ## ⚡ **High Priority (This Sprint - Sprint 4)**
 
-### **Cloud Migration Preparation**
-- [ ] **Render Deployment Configuration**: Set up cloud services
+### **Cloud Migration Preparation (Sprint 4)**
+- [ ] **Fly.io Deployment Configuration**: Production Dockerfile, secrets, health checks, graceful shutdown
 - [ ] **Tailscale Network Setup**: Secure local-cloud communication
 - [ ] **Service Migration Strategy**: Move non-GPU services to cloud
 - [ ] **Hybrid Architecture Testing**: Verify local-cloud integration
 
-### **Voice System Enhancement**
+### **Voice System Enhancement (Sprint 4 polish)**
 - [ ] **Real-time Streaming**: Implement token-by-token voice output
 - [ ] **"Being Typed" Effect**: Show text generation in real-time
 - [ ] **Mid-answer Stopping**: Allow interruption of responses
@@ -158,10 +158,10 @@
 **Recommendation**: Proceed with Sprint 4 - voice optimization can be done in parallel
 
 ### **This Week's Goal:**
-**Target**: Complete Sprint 4 preparation and begin cloud migration
+**Target**: Begin Sprint 4 execution per v4.5 and start cloud migration
 
 ### **Sprint 4 Priority Order:**
-1. **Cloud Infrastructure Setup** (Render, Tailscale)
+1. **Cloud Infrastructure Setup** (Fly.io, Tailscale)
 2. **Service Migration** (non-GPU services to cloud)
 3. **Hybrid Testing** (local-cloud integration)
 4. **Voice Optimization** (real-time streaming)

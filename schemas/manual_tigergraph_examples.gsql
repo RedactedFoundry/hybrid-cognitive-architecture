@@ -1,3 +1,6 @@
+// Moved from repo root to schemas/ for organization.
+// Manual TigerGraph example queries for local dev.
+
 // Manual TigerGraph Data Entry Examples
 // Run these commands in GraphStudio or via GSQL CLI
 

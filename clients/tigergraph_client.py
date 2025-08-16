@@ -1,4 +1,4 @@
-# clients/tigervector_client.py
+# clients/tigergraph_client.py
 """
 TigerGraph Community Edition Client for Hybrid AI Council
 
@@ -28,7 +28,7 @@ from utils.error_utils import (
 )
 
 # Set up structured logging
-logger = structlog.get_logger("tigervector_client")
+logger = structlog.get_logger("tigergraph_client")
 
 def get_tigergraph_connection(graph_name="HybridAICouncil"):
     """

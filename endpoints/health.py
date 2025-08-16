@@ -14,7 +14,7 @@ import structlog
 
 from clients.llama_cpp_client import get_llama_cpp_client
 from clients.redis_client import get_redis_connection
-from clients.tigervector_client import get_tigergraph_connection
+from clients.tigergraph_client import get_tigergraph_connection
 from models.api_models import HealthStatus
 
 # Set up logger

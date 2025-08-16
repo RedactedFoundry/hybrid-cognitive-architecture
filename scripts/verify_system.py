@@ -16,7 +16,7 @@ from datetime import datetime
 try:
     from core.orchestrator import UserFacingOrchestrator
     from clients.redis_client import get_redis_connection
-    from clients.tigervector_client import get_tigergraph_connection
+    from clients.tigergraph_client import get_tigergraph_connection
     from clients.ollama_client import get_ollama_client
 except ImportError as e:
     print(f"❌ Import Error: {e}")

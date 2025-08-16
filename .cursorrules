@@ -17,7 +17,7 @@ You are an expert AI coding assistant and mentor helping a solo, first-time buil
 You are working on a hybrid cloud/local AI system following the Architectural Blueprint v3.8 and Implementation Plan v2.3.
 
 * **Architecture**: 3-layer cognitive system (Pheromind/Council/KIP).  
-* **Deployment**: Local-first development, migrating to Render (cloud logic) \+ local RTX 4090 (GPU inference) via Tailscale.  
+* **Deployment**: Local-first development, migrating to Fly.io (cloud logic) \+ local RTX 4090 (GPU inference) via Tailscale.  
 * **Tech Stack**: Python 3.11+, FastAPI (with WebSockets), LangGraph, Docker, Redis (Managed), TigerVector (Docker).
 
 ### **Project Structure**
@@ -182,7 +182,8 @@ You have access to two powerful MCP servers for enhanced development assistance:
 ./scripts/setup-tigergraph.sh
 
 \# Start other services  
-docker-compose up \-d redis vllm
+docker-compose up \-d redis
+PYTHONPATH=.:./config LLAMA_SERVER_BIN="D:/llama.cpp/llama-server.exe" python scripts/start_llamacpp_servers.py
 
 \# Initialize TigerGraph database (first time only)
 python scripts/init_tigergraph.py
@@ -212,7 +213,7 @@ pytest tests/test\_file.py::test\_function \-v
 * **"Can't connect to service"**: Check docker ps to see if the container is running.  
 * **"Import error"**: Run pip install \-e . from the project root to install local packages.  
 * **"Port already in use"**: Use lsof \-i :\[port\_number\] to find the conflicting process.  
-* **"Model not loading"**: Check the vLLM container logs with docker-compose logs \-f vllm.
+* **"Model not loading"**: Check .logs/llamacpp_servers.log and verify ports for llama.cpp.
 
 ## **Critical Reminders (The "Gotchas")**
 
@@ -221,7 +222,7 @@ pytest tests/test\_file.py::test\_function \-v
 3. **Redis TTL:** Pheromones expire in **12 seconds**. All related logic must account for this.  
 4. **Cost Tracking:** All LLM calls must have their tokens counted and logged.  
 5. **State Sync:** TigerGraph is the single source of truth for persistent state. Redis is ephemeral.  
-6. **Model Startup:** The local vLLM service can take 5-10 minutes to load models. Account for this in startup scripts and health checks.
+6. **Model Startup:** The local llama.cpp servers can take time to load models. Account for this in startup scripts and health checks.
 7. **Community Edition:** TigerGraph 4.2.0 Community Edition is license-free but requires 2.4GB download from dl.tigergraph.com.
 8. **File Size Enforcement:** STOP immediately if any file exceeds 500 lines - split into focused modules first.
 9. **Security First:** NEVER proceed with hardcoded credentials - set up environment variables properly.

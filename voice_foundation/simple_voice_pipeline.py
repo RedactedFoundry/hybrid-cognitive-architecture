@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple Voice Pipeline with Mock STT/TTS for Integration Testing
-
-This provides a working voice foundation that can be easily integrated
-with the orchestrator while we work on the advanced model installations.
+Deprecated simple voice pipeline kept for backward compatibility.
+Production voice runs under python311-services/voice with Coqui XTTS + NeMo Parakeet.
 """
 
 import asyncio
